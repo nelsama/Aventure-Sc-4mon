@@ -107,7 +107,7 @@ make CC65_HOME=D:/cc65
 
 Genera:
 
-- `output/aventura.bin` (13916 bytes, se carga en `$0800`)
+- `output/aventura.bin` (13961 bytes, se carga en `$0800`)
 - `output/aventura.map` (mapa de memoria)
 - `assets/GRAF.DAT` (1024 bytes: 64 registros de 16 bytes; 22 tiles de fondo + 42 sprites)
 
@@ -166,7 +166,7 @@ se detiene: sin patrones no hay graficos.
   `rom_mfs_read_via_zp` / `rom_mfs_close`), en streaming de 16 bytes, y se
   escriben directamente en la VRAM con `vc_load_spr_pattern` /
   `vc_load_bg_pattern`. Solo se usa un buffer de 16 bytes en RAM; el binario
-  queda en **13.916 bytes**.
+  queda en **13.961 bytes**.
 - El **agujero** de la sala 5, la **escalera** de Catacumbas 1 y el **altar**
   del caliz son imagenes de **16x16 formadas por 4 tiles de fondo** cada una
   (no un tile repetido):
@@ -207,11 +207,11 @@ Mapa de memoria final:
 | Segmento | Inicio | Fin    |
 |----------|--------|--------|
 | ZEROPAGE | `$0020`| `$0065`|
-| CODE     | `$0847`| `$3AB9`|
-| RODATA   | `$3ABA`| `$3E5B`|
-| BSS      | `$3E5C`| `$3EDA`|
+| CODE     | `$0847`| `$3AE6`|
+| RODATA   | `$3AE7`| `$3E88`|
+| BSS      | `$3E89`| `$3F07`|
 
-Termina en `$3EDA`, dejando unos **164 bytes libres** en la zona RAM del
+Termina en `$3F07`, dejando unos **119 bytes libres** en la zona RAM del
 programa (la pila de cc65 tiene ademas sus 256 bytes en `$3F7F-$3FFF`).
 
 ## Herramienta de pruebas

@@ -132,23 +132,27 @@ void snd_win(void) {
 }
 
 /* Pasos al subir o bajar las escaleras: tres golpes secos, cada vez mas
- * agudos al subir y mas graves al bajar. */
+ * agudos al subir y mas graves al bajar. El primero suena aqui mismo, antes
+ * de que render_room() redibuje la sala (eso tarda mas de un frame y el
+ * efecto se notaba con retraso). */
 void snd_stairs(uint8_t up) {
     fx0_t = 0;               /* corta cualquier efecto corto anterior */
-    stair_n = 3;
     stair_d = up ? 1 : -1;
     stair_k = up ? 0 : 2;
-    stair_t = 1;             /* el primer paso suena ya en este frame */
+    voice_on(0, stair_freq[stair_k], WF_PULSE, 0x00, 0x64);
+    stair_k = (uint8_t)(stair_k + stair_d);
+    stair_n = 2;             /* quedan dos pasos mas */
+    stair_t = 12;            /* ~200 ms entre pasos */
 }
 
 void snd_update(void) {
-    /* Pasos de escalera (voz 0) */
+    /* Pasos de escalera (voz 0). El primero ya sono en snd_stairs(). */
     if (stair_n) {
         if (--stair_t == 0) {
             stair_t = 12;    /* ~200 ms entre pasos */
             voice_on(0, stair_freq[stair_k], WF_PULSE, 0x00, 0x64);
-            stair_n--;
             stair_k = (uint8_t)(stair_k + stair_d);
+            stair_n--;
             if (!stair_n) fx0_t = 10;  /* cola corta tras el ultimo paso */
         }
     }
