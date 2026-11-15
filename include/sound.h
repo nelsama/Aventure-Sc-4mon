@@ -20,6 +20,7 @@ void snd_roar(void);
 void snd_bat(void);
 void snd_death(void);
 void snd_win(void);
+void snd_stairs(uint8_t up);
 void snd_update(void);
 void snd_silence(void);
 

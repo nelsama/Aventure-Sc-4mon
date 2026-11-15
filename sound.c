@@ -27,6 +27,13 @@ static uint8_t fx2_t;       /* temporizador voz 2 */
 static uint8_t fx1_kind;    /* 1 = muerte, 2 = victoria */
 static uint16_t sweep;
 
+/* Pasos de escalera: tres golpes cortos que suben o bajan. */
+static uint8_t stair_n;     /* pasos que quedan */
+static uint8_t stair_k;     /* indice en stair_freq (0..2) */
+static int8_t  stair_d;     /* +1 subir, -1 bajar */
+static uint8_t stair_t;     /* temporizador entre pasos */
+static const uint16_t stair_freq[3] = { 0x0A00, 0x1000, 0x1600 };
+
 static void voice_freq(uint8_t v, uint16_t f) {
     volatile uint8_t *p = SID + (uint16_t)v * 7;
     p[0] = (uint8_t)f;
@@ -58,6 +65,7 @@ void snd_init(void) {
     fx1_t = 0;
     fx2_t = 0;
     sweep = 0;
+    stair_n = 0;
 }
 
 void snd_silence(void) {
@@ -68,6 +76,7 @@ void snd_silence(void) {
     fx1_t = 0;
     fx2_t = 0;
     sweep = 0;
+    stair_n = 0;
 }
 
 void snd_pick(void) {
@@ -122,7 +131,28 @@ void snd_win(void) {
     voice_on(1, sweep, WF_PULSE, 0x00, 0xA8);
 }
 
+/* Pasos al subir o bajar las escaleras: tres golpes secos, cada vez mas
+ * agudos al subir y mas graves al bajar. */
+void snd_stairs(uint8_t up) {
+    fx0_t = 0;               /* corta cualquier efecto corto anterior */
+    stair_n = 3;
+    stair_d = up ? 1 : -1;
+    stair_k = up ? 0 : 2;
+    stair_t = 1;             /* el primer paso suena ya en este frame */
+}
+
 void snd_update(void) {
+    /* Pasos de escalera (voz 0) */
+    if (stair_n) {
+        if (--stair_t == 0) {
+            stair_t = 12;    /* ~200 ms entre pasos */
+            voice_on(0, stair_freq[stair_k], WF_PULSE, 0x00, 0x64);
+            stair_n--;
+            stair_k = (uint8_t)(stair_k + stair_d);
+            if (!stair_n) fx0_t = 10;  /* cola corta tras el ultimo paso */
+        }
+    }
+
     /* Voz 0: efectos cortos */
     if (fx0_t) {
         fx0_t--;

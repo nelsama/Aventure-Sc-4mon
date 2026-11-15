@@ -608,10 +608,16 @@ static void move_player(uint8_t actions) {
         uint8_t pc = (uint8_t)((px + 4) >> 3);
         uint8_t pr = (uint8_t)((py + 4) >> 3);
         if (pc >= 19 && pc <= 20 && pr >= 15 && pr <= 16) {
-            if (current_room == 5) current_room = 12;
-            else current_room = 5;
+            if (current_room == 5) {
+                current_room = 12;       /* el agujero baja a Catacumbas */
+                snd_stairs(0);
+                py = 136;                /* aparece al pie de la escalera */
+            } else {
+                current_room = 5;        /* las escaleras suben al bosque */
+                snd_stairs(1);
+                py = 112;                /* aparece arriba, fuera del hoyo */
+            }
             px = 156;
-            py = 136;
             render_room();
             hud_dirty = 1;
         }

@@ -107,7 +107,7 @@ make CC65_HOME=D:/cc65
 
 Genera:
 
-- `output/aventura.bin` (13760 bytes, se carga en `$0800`)
+- `output/aventura.bin` (13916 bytes, se carga en `$0800`)
 - `output/aventura.map` (mapa de memoria)
 - `assets/GRAF.DAT` (1024 bytes: 64 registros de 16 bytes; 22 tiles de fondo + 42 sprites)
 
@@ -166,7 +166,7 @@ se detiene: sin patrones no hay graficos.
   `rom_mfs_read_via_zp` / `rom_mfs_close`), en streaming de 16 bytes, y se
   escriben directamente en la VRAM con `vc_load_spr_pattern` /
   `vc_load_bg_pattern`. Solo se usa un buffer de 16 bytes en RAM; el binario
-  queda en **13.760 bytes**.
+  queda en **13.916 bytes**.
 - El **agujero** de la sala 5, la **escalera** de Catacumbas 1 y el **altar**
   del caliz son imagenes de **16x16 formadas por 4 tiles de fondo** cada una
   (no un tile repetido):
@@ -188,8 +188,9 @@ se detiene: sin patrones no hay graficos.
 - Colision por software con un unico punto central `(x+4, y+4)` contra la
   rejilla de celdas; asi se puede cruzar el puente de forma fiable.
 - Sonido SID no bloqueante (`sound.c`): recoger/soltar, llave, gruñido, rugido,
-  muerte y victoria. El ancho de pulso se fija a ~50% (si es 0, el pulso no
-  suena en el SID).
+  muerte, victoria y **pasos al subir/bajar las escaleras** (tres golpes de
+  pulso que ascienden al subir y descienden al bajar). El ancho de pulso se
+  fija a ~50% (si es 0, el pulso no suena en el SID).
 - Para que todo quepa en RAM se enlaza contra la **libreria modular** de
   `videocore-6502-cc65` (`video.o`, `gfx_vram.o`, `gfx_tiles.o`, `gfx_text.o`,
   `gfx_pal.o`). Al no usar `vc_sprite_disable` (se apaga el sprite escribiendo
@@ -206,11 +207,11 @@ Mapa de memoria final:
 | Segmento | Inicio | Fin    |
 |----------|--------|--------|
 | ZEROPAGE | `$0020`| `$0065`|
-| CODE     | `$0847`| `$3A23`|
-| RODATA   | `$3A24`| `$3DBF`|
-| BSS      | `$3DC0`| `$3E3A`|
+| CODE     | `$0847`| `$3AB9`|
+| RODATA   | `$3ABA`| `$3E5B`|
+| BSS      | `$3E5C`| `$3EDA`|
 
-Termina en `$3E3A`, dejando unos **324 bytes libres** en la zona RAM del
+Termina en `$3EDA`, dejando unos **164 bytes libres** en la zona RAM del
 programa (la pila de cc65 tiene ademas sus 256 bytes en `$3F7F-$3FFF`).
 
 ## Herramienta de pruebas
