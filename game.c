@@ -864,7 +864,6 @@ static void update_magnet(void) {
 
     if (carry != OBJ_MAGNET) return;
     if (!obj_active[OBJ_CHALICE] || obj_room[OBJ_CHALICE] != current_room) return;
-    if ((frame & 7) != 0) return;
 
     cx = obj_x[OBJ_CHALICE];
     cy = obj_y[OBJ_CHALICE];
@@ -873,10 +872,11 @@ static void update_magnet(void) {
     dy = (cy > py) ? (uint16_t)(cy - py) : (uint16_t)(py - cy);
     if (dx <= 8 && dy <= 8) return;
 
-    if (cx < px) cx = (uint16_t)(cx + 8);
-    else if (cx > px) cx = (uint16_t)(cx - 8);
-    if (cy < py) cy = (uint16_t)(cy + 8);
-    else if (cy > py) cy = (uint16_t)(cy - 8);
+    /* 1 px por frame: antes saltaba 8 px cada 8 frames y se veia a tirones. */
+    if (cx < px) cx = (uint16_t)(cx + 1);
+    else if (cx > px) cx = (uint16_t)(cx - 1);
+    if (cy < py) cy = (uint16_t)(cy + 1);
+    else if (cy > py) cy = (uint16_t)(cy - 1);
 
     if (cx < 8) cx = 8;
     if (cx > 304) cx = 304;

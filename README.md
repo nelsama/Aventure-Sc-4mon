@@ -81,7 +81,7 @@ Catacumbas (se accede por el agujero de la sala 5):
   Tiene **dos sprites**: vertical en el Foso (cruce arriba/abajo) y horizontal
   en Catac. 3 (cruce izquierda/derecha).
 - **Iman**: Catac. 2. Herradura roja con polos blancos; atrae el caliz a traves
-  de los muros.
+  de los muros con movimiento continuo (1 px por frame).
 - **Llave amarilla**: Castillo de Oro. Abre la puerta norte de ese castillo.
 - **Llave blanca**: Catac. 4. Abre la puerta del Castillo Blanco.
 - **Llave negra**: Castillo Blanco. Abre la puerta del Castillo Negro.
