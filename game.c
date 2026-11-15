@@ -238,6 +238,8 @@ static int8_t   obj_dy[NUM_OBJ];
 static uint8_t  growl_cd;   /* pausa entre gruñidos de dragon */
 static uint8_t  dragon_dir[3]; /* 0 = derecha, 1 = izquierda (ultima) */
 static uint8_t  walk_anim;     /* contador de animacion al caminar */
+static uint8_t  player_tiles;  /* clave de los tiles ya escritos del jugador */
+static uint8_t  dragon_tiles;  /* clave de los tiles ya escritos del dragon */
 
 static const uint8_t obj_pat[NUM_OBJ] = { 0,1,2,3,4,7,7,0,0,0,5 };
 static const uint8_t obj_pal[NUM_OBJ] = { 1,1,1,2,1,1,0,2,3,1,0 };
@@ -1003,28 +1005,78 @@ static void draw_hud(void) {
 /* ===========================================================================
  * DIBUJO DE SPRITES
  * =========================================================================== */
-/* Dibuja un 16x16 espejado horizontalmente con los patrones de la derecha:
- * pinta con FLIP_X y luego intercambia los cuadrantes izquierda/derecha. */
-static void draw16_mirror(uint8_t first, uint16_t x, uint8_t y,
-                          uint8_t tile0, uint8_t flags) {
-    vc_sprite16_set(first, x, y, tile0, (uint8_t)(flags | VC_SPR_FLIP_X));
-    vc_oam_put((uint8_t)(first + 0), VC_OAM_TILE, (uint8_t)(tile0 + 1));
-    vc_oam_put((uint8_t)(first + 1), VC_OAM_TILE, tile0);
-    vc_oam_put((uint8_t)(first + 2), VC_OAM_TILE, (uint8_t)(tile0 + 3));
-    vc_oam_put((uint8_t)(first + 3), VC_OAM_TILE, (uint8_t)(tile0 + 2));
+/* Dibuja un objeto 16x16 (4 sprites) escribiendo solo lo necesario:
+ * X/Y/FLAGS de cada cuadrante en cada frame y los TILES solo cuando cambia
+ * el patron o el espejado. Asi entra holgado en el VBLANK. */
+static void draw16_fast(uint8_t first, uint16_t x, uint8_t y,
+                        uint8_t tile0, uint8_t flags, uint8_t mirror,
+                        uint8_t *key) {
+    uint8_t k = (uint8_t)(tile0 | (mirror ? 0x80 : 0));
+    uint8_t f = flags;
+
+    if (mirror) f |= VC_SPR_FLIP_X;
+
+    vc_sprite_move(first, x, y, f);
+    vc_sprite_move((uint8_t)(first + 1), (uint16_t)(x + 8), y, f);
+    vc_sprite_move((uint8_t)(first + 2), x, (uint8_t)(y + 8), f);
+    vc_sprite_move((uint8_t)(first + 3), (uint16_t)(x + 8),
+                   (uint8_t)(y + 8), f);
+
+    if (k == *key) return;
+    *key = k;
+
+    if (mirror) {
+        vc_oam_put((uint8_t)(first + 0), VC_OAM_TILE, (uint8_t)(tile0 + 1));
+        vc_oam_put((uint8_t)(first + 1), VC_OAM_TILE, tile0);
+        vc_oam_put((uint8_t)(first + 2), VC_OAM_TILE, (uint8_t)(tile0 + 3));
+        vc_oam_put((uint8_t)(first + 3), VC_OAM_TILE, (uint8_t)(tile0 + 2));
+    } else {
+        vc_oam_put((uint8_t)(first + 0), VC_OAM_TILE, tile0);
+        vc_oam_put((uint8_t)(first + 1), VC_OAM_TILE, (uint8_t)(tile0 + 1));
+        vc_oam_put((uint8_t)(first + 2), VC_OAM_TILE, (uint8_t)(tile0 + 2));
+        vc_oam_put((uint8_t)(first + 3), VC_OAM_TILE, (uint8_t)(tile0 + 3));
+    }
 }
 
-static void draw_actors(void) {
-    uint8_t i, pat, pal;
+/* Dibuja el dragon i en los slots 16-19. Se llama lo primero de draw_actors
+ * para que sus sprites se escriban dentro del VBLANK. */
+static void draw_dragon(uint8_t i) {
+    uint8_t pat = DRAGON_PAT_BASE;
     uint16_t sx;
     uint8_t sy;
 
-    /* Solo apagamos los slots que no se redibujan (0 y dragones 16-19).
-     * Los objetos (1-11) y el jugador (12-15) se sobrescriben cada frame:
-     * asi la llave y los objetos no parpadean por la carrera con VBLANK. */
+    if ((frame >> 3) & 1) pat += DRAGON_FRAME_OFF;
+    sx = (obj_x[i] >= 4) ? (uint16_t)(obj_x[i] - 4) : 0;
+    if (sx > 304) sx = 304;
+    sy = (obj_y[i] >= 4) ? (uint8_t)(obj_y[i] - 4) : 0;
+    if (sy < 24) sy = 24;
+    if (sy > 208) sy = 208;
+    draw16_fast(DRAGON_SPR_FIRST, sx, sy, pat, obj_pal[i],
+                (uint8_t)dragon_dir[i - OBJ_DRAG_R], &dragon_tiles);
+}
+
+static void draw_actors(void) {
+    uint8_t i, pat, pal, dragon = OBJ_NONE;
+    uint16_t sx;
+    uint8_t sy;
+
+    /* Los dragones van PRIMERO y sin apagarlos antes: son los unicos que
+     * ocupaban slots fijos y, si el apagado/redibujado caia a mitad del
+     * barrido, desaparecian un frame (el "titileo" del dragon). */
+    for (i = OBJ_DRAG_R; i <= OBJ_DRAG_Y; i++) {
+        if (obj_active[i] && obj_room[i] == current_room)
+            dragon = i;
+    }
+    if (dragon != OBJ_NONE) {
+        draw_dragon(dragon);
+    } else {
+        for (i = DRAGON_SPR_FIRST; i < (uint8_t)(DRAGON_SPR_FIRST + 4); i++)
+            vc_oam_put(i, VC_OAM_Y, VC_SPR_DISABLED);
+    }
+
+    /* Slot 0 sin usar. Los objetos (1-11) y el jugador (12-15) se
+     * sobrescriben cada frame, asi que no hace falta apagarlos. */
     vc_oam_put(0, VC_OAM_Y, VC_SPR_DISABLED);
-    for (i = DRAGON_SPR_FIRST; i < (uint8_t)(DRAGON_SPR_FIRST + 4); i++)
-        vc_oam_put(i, VC_OAM_Y, VC_SPR_DISABLED);
 
     {
         if (face == FACE_D)      pat = SPR_PLAYER_DOWN;
@@ -1043,30 +1095,15 @@ static void draw_actors(void) {
         sy = (py >= 4) ? (uint8_t)(py - 4) : 0;
         if (sy < 24) sy = 24;
         if (sy > 208) sy = 208;
-        vc_sprite16_set(PLAYER_SPR_FIRST, sx, sy, pat, VC_SPPAL_0);
+        draw16_fast(PLAYER_SPR_FIRST, sx, sy, pat, VC_SPPAL_0, 0,
+                    &player_tiles);
     }
 
     for (i = 0; i < NUM_OBJ; i++) {
+        if (i >= OBJ_DRAG_R && i <= OBJ_DRAG_Y) continue;
         if (!obj_active[i] || i == carry || obj_room[i] != current_room) {
             /* Los objetos no dibujados se apagan aqui, no antes de dibujar. */
-            if (i < OBJ_DRAG_R || i > OBJ_DRAG_Y)
-                vc_oam_put(obj_slot[i], VC_OAM_Y, VC_SPR_DISABLED);
-            continue;
-        }
-
-        /* Los dragones se dibujan como 16x16 (2x2 sprites). */
-        if (i >= OBJ_DRAG_R && i <= OBJ_DRAG_Y) {
-            pat = DRAGON_PAT_BASE;
-            if ((frame >> 3) & 1) pat += DRAGON_FRAME_OFF;
-            sx = (obj_x[i] >= 4) ? (uint16_t)(obj_x[i] - 4) : 0;
-            if (sx > 304) sx = 304;
-            sy = (obj_y[i] >= 4) ? (uint8_t)(obj_y[i] - 4) : 0;
-            if (sy < 24) sy = 24;
-            if (sy > 208) sy = 208;
-            if (dragon_dir[i - OBJ_DRAG_R])
-                draw16_mirror(DRAGON_SPR_FIRST, sx, sy, pat, obj_pal[i]);
-            else
-                vc_sprite16_set(DRAGON_SPR_FIRST, sx, sy, pat, obj_pal[i]);
+            vc_oam_put(obj_slot[i], VC_OAM_Y, VC_SPR_DISABLED);
             continue;
         }
 
@@ -1156,6 +1193,11 @@ int main(void) {
     while (1) {
         vc_wait_vblank();
 
+        /* Dibujar justo al entrar en VBLANK. update_game tarda mas que el
+         * VBLANK (45 lineas): si se dibujaba despues, las escrituras al OAM
+         * caian a mitad del barrido y el dragon parpadeaba. */
+        if (state == ST_PLAY) draw_actors();
+
         actions = joy_read();
         fire = (uint8_t)((actions & JOY_A_FIRE) && !(prev & JOY_A_FIRE));
         prev = (uint8_t)(actions & JOY_A_FIRE);
@@ -1165,8 +1207,6 @@ int main(void) {
         } else {
             if (fire) start_game();
         }
-
-        if (state == ST_PLAY) draw_actors();
 
         snd_update();
         vc_wait_vblank_end();

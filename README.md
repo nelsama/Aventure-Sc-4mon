@@ -107,7 +107,7 @@ make CC65_HOME=D:/cc65
 
 Genera:
 
-- `output/aventura.bin` (13461 bytes, se carga en `$0800`)
+- `output/aventura.bin` (13760 bytes, se carga en `$0800`)
 - `output/aventura.map` (mapa de memoria)
 - `assets/GRAF.DAT` (1024 bytes: 64 registros de 16 bytes; 22 tiles de fondo + 42 sprites)
 
@@ -137,21 +137,27 @@ se detiene: sin patrones no hay graficos.
 
 - Objetivo `none` de cc65, CPU 6502. Binario autocontenido cargado en `$0800`.
 - Pantalla de texto 40x30. HUD en filas 1-2 y pista en la 28; juego en 3-27.
-- El jugador y los dragones son objetos **16x16 (2x2 sprites)** dibujados con
-  `vc_sprite16_set()`. El jugador (caballero azul + oro) tiene 4 patrones por
-  direccion y **2 fotogramas de caminar** para izquierda/derecha (24 patrones
-  en total); los dragones usan el diseño **Poison Drake** con **2 fotogramas de
-  aleteo** y la direccion izquierda se dibuja **espejada por codigo** (FLIP_X +
-  intercambio de cuadrantes) para no duplicar patrones.
+- El jugador y los dragones son objetos **16x16 (2x2 sprites)**. El jugador
+  (caballero azul + oro) tiene 4 patrones por direccion y **2 fotogramas de
+  caminar** para izquierda/derecha (24 patrones en total); los dragones usan el
+  diseno **Poison Drake** con **2 fotogramas de aleteo** y la direccion
+  izquierda se dibuja **espejada por codigo** (FLIP_X + intercambio de
+  cuadrantes) para no duplicar patrones.
+- El dibujo 16x16 (`draw16_fast`) escribe en cada frame solo X/Y/FLAGS de los 4
+  cuadrantes; los TILES se reescriben solo cuando cambia el patron o el
+  espejado. Antes cada cuadrante escribia tambien COLL y los tiles, y el
+  dragon se quedaba fuera del VBLANK.
 - IA de dragones: persiguen al jugador por ambos ejes (deslizan por las paredes)
   y, si huyes con uno a menos de 64 px, te sigue a la sala siguiente. Emiten
   gruñidos cuando estan cerca y un rugido al entrar contigo.
 - Sprites: jugador en los slots OAM 12-15, dragones en 16-19, objetos en
   1-11 y el murcielago en el 20 (dibujado encima del jugador). Como maximo
   8 sprites por scanline; hay 32 en OAM.
-- Para evitar parpadeos por la carrera con VBLANK, solo se apagan los slots
-  que no se redibujan ese frame; la llave y los objetos se sobrescriben cada
-  frame. El jugador no parpadea (la invulnerabilidad no lo oculta).
+- Para evitar parpadeos por la carrera con VBLANK, `draw_actors()` se llama
+  justo despues de `vc_wait_vblank()` y antes de leer el joystick/actualizar el
+  juego. El dragon se dibuja el primero, con `draw16_fast`, y sus slots no se
+  apagan antes si esta presente; asi sus 4 sprites se escriben dentro del
+  VBLANK. El jugador no parpadea (la invulnerabilidad no lo oculta).
 - La celda donde esta el jugador siempre es transitable: si recoges el puente
   estando encima, puedes salir de la pared. Al soltarlo cerca de su sitio, se
   repone en la pared en vez de caer al lado.
@@ -160,7 +166,7 @@ se detiene: sin patrones no hay graficos.
   `rom_mfs_read_via_zp` / `rom_mfs_close`), en streaming de 16 bytes, y se
   escriben directamente en la VRAM con `vc_load_spr_pattern` /
   `vc_load_bg_pattern`. Solo se usa un buffer de 16 bytes en RAM; el binario
-  queda en **13.461 bytes**.
+  queda en **13.760 bytes**.
 - El **agujero** de la sala 5, la **escalera** de Catacumbas 1 y el **altar**
   del caliz son imagenes de **16x16 formadas por 4 tiles de fondo** cada una
   (no un tile repetido):
@@ -200,11 +206,11 @@ Mapa de memoria final:
 | Segmento | Inicio | Fin    |
 |----------|--------|--------|
 | ZEROPAGE | `$0020`| `$0065`|
-| CODE     | `$0847`| `$38F8`|
-| RODATA   | `$38F9`| `$3C94`|
-| BSS      | `$3C95`| `$3D0D`|
+| CODE     | `$0847`| `$3A23`|
+| RODATA   | `$3A24`| `$3DBF`|
+| BSS      | `$3DC0`| `$3E3A`|
 
-Termina en `$3D0D`, dejando unos **625 bytes libres** en la zona RAM del
+Termina en `$3E3A`, dejando unos **324 bytes libres** en la zona RAM del
 programa (la pila de cc65 tiene ademas sus 256 bytes en `$3F7F-$3FFF`).
 
 ## Herramienta de pruebas
