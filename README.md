@@ -4,6 +4,12 @@ Homenaje al clasico **Adventure** de Atari 2600 para el core de video de
 FPGA 6502 (`vc`). Programado en C con **cc65** y pensado para cargarse en el
 monitor desde `$0800`.
 
+> **Dependencia de `GRAF.DAT`:** el binario **no** lleva los graficos dentro: al
+> arrancar carga los patrones de tiles y sprites desde **`GRAF.DAT`** en la SD.
+> El fichero esta incluido en el repositorio (`assets/GRAF.DAT`, 1024 bytes) y
+> hay que copiarlo a la SD junto al binario. Si falta, el juego muestra
+> `FALTA GRAF.DAT / COPIALO EN LA SD` y se detiene.
+
 ![Pantalla de inicio](doc/pantalla.png)
 
 ## Objetivo
@@ -71,6 +77,10 @@ Catacumbas (se accede por el agujero de la sala 5):
                 dragon verde
 ```
 
+Al subir por las escaleras de Catac. 1 vuelves a la sala *Entrada* (apareces
+encima del agujero). Tanto al subir como al bajar suena un efecto de **pasos**:
+tres golpes que ascienden al subir y descienden al bajar.
+
 ## Objetos y enemigos
 
 - **Caliz**: camara sellada del Castillo Negro (se saca con el iman). Usa el
@@ -109,15 +119,21 @@ Genera:
 
 - `output/aventura.bin` (13961 bytes, se carga en `$0800`)
 - `output/aventura.map` (mapa de memoria)
-- `assets/GRAF.DAT` (1024 bytes: 64 registros de 16 bytes; 22 tiles de fondo + 42 sprites)
+
+`make` **no genera los graficos**: el binario usa `assets/GRAF.DAT` (1024 bytes:
+64 registros de 16 bytes = 22 tiles de fondo + 42 sprites), que ya viene en el
+repositorio y hay que copiar a la SD junto al binario.
 
 ## Cargar en el emulador
 
-La SD debe contener **`GRAF.DAT`** ademas del binario. Para inyectarlo en la
-imagen del emulador (una sola vez):
+La SD debe contener **`AVENTURA.BI`** (el binario) y **`GRAF.DAT`** (los
+patrones). Si aun no tienes la imagen de SD del emulador, creala de 16 MB y
+copia los dos ficheros:
 
 ```sh
+python D:/Proyectos/EmuladorFpga6502/tools/sd_tool.py format tarjeta.img 16
 python D:/Proyectos/EmuladorFpga6502/tools/sd_tool.py inject tarjeta.img assets/GRAF.DAT GRAF.DAT
+python D:/Proyectos/EmuladorFpga6502/tools/sd_tool.py inject tarjeta.img output/aventura.bin AVENTURA.BI
 ```
 
 Con el monitor en marcha y la SD montada:
@@ -132,6 +148,32 @@ R 0800
 
 Si falta `GRAF.DAT`, el juego muestra **`FALTA GRAF.DAT / COPIALO EN LA SD`** y
 se detiene: sin patrones no hay graficos.
+
+## Graficos (`GRAF.DAT`)
+
+`assets/GRAF.DAT` es un fichero plano de 1024 bytes dividido en 64 registros de
+16 bytes. Cada registro es un patron 8x8 con **dos planos** (8 B de plano 0 +
+8 B de plano 1, color 0-3):
+
+- registros 0-9: tiles de fondo base (suelo, hierba, agua, muro...);
+- registros 10-13: **agujero**; 14-17: **escalera**; 18-21: **altar** (4 tiles
+  16x16 cada uno);
+- registros 22-63: **42 patrones de sprite** (jugador, dragones, objetos, caliz,
+  corazon del HUD...).
+
+El juego lo lee al arrancar con `rom_mfs_open` / `rom_mfs_read_via_zp` /
+`rom_mfs_close`, en streaming de 16 bytes, y lo escribe en la VRAM con
+`vc_load_bg_pattern` / `vc_load_spr_pattern`. Solo usa 16 bytes de buffer en
+RAM, asi que los graficos no ocupan ni RODATA ni RAM.
+
+Si cambias un diseno, vuelve a escribir `GRAF.DAT` y copialo a la SD:
+
+```sh
+python tools/gen_hud.py                    # corazon del HUD (sprite 41)
+python tools/mock_hole.py --write-graf     # agujero (0x8A-0x8D) y escalera (0x8E-0x91)
+python tools/mock_pedestal.py --write-graf # altar (0x92-0x95)
+python tools/mock_chalice.py --write-graf  # caliz con asas (sprite 0)
+```
 
 ## Detalles tecnicos
 
