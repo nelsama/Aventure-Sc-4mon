@@ -1,0 +1,13 @@
+# Artefactos de compilacion
+build/
+output/
+*.o
+*.map
+*.lbl
+
+# Imagen de SD del emulador (16 MB)
+tarjeta.img
+
+# Python
+__pycache__/
+*.pyc
