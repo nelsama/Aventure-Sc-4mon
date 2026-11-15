@@ -15,7 +15,7 @@ monitor desde `$0800`.
 ## Objetivo
 
 Recupera el **caliz** de la camara sellada del **Castillo Negro** y llevalo al
-**pedestal de oro** del **Castillo de Oro** (habitacion inicial). Tienes 5
+**pedestal de oro** del **Castillo de Oro** (habitacion inicial). Tienes 3
 vidas.
 
 ## Controles
@@ -218,9 +218,10 @@ python tools/mock_chalice.py --write-graf  # caliz con asas (sprite 0)
     suelo del castillo como fondo para que no quede dentro de un cuadrado.
   Las hojas de diseno estan en `doc/hole_options.png` y
   `doc/pedestal_options.png`.
-- HUD: las vidas se muestran como **corazones** (sprite 41, paleta 2, slots OAM
-  21-25) y al lado de `LLEVA` aparece el **icono del objeto** que llevas (slot
-  26). Ambos se redibujan cuando cambia el HUD, sin tocar la RAM del juego.
+- HUD: las vidas se muestran como **corazones** (sprite 41, paleta 2, uno por
+  vida en los slots OAM 21-25) y al lado de `LLEVA` aparece el **icono del
+  objeto** que llevas (slot 26). Ambos se redibujan cuando cambia el HUD, sin
+  tocar la RAM del juego.
 - No hay pantalla de titulo (se recorto para liberar RAM); el juego arranca
   directamente en el Castillo de Oro.
 - El HUD usa nombres de sala cortos (B1, C2, ORO...) y pistas de una palabra

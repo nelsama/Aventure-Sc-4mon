@@ -936,7 +936,7 @@ static void reset_objects(void) {
 }
 
 static void start_game(void) {
-    lives = 5;
+    lives = 3;
     carry = OBJ_NONE;
     current_room = 8;
     px = 160;
