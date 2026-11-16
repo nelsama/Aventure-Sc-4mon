@@ -11,3 +11,7 @@ tarjeta.img
 # Python
 __pycache__/
 *.pyc
+
+# Copias de seguridad de los patrones
+*.bak
+assets/GRAF_resp_*.DAT

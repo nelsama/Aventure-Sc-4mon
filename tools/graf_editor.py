@@ -15,6 +15,7 @@ Uso:
 import os
 import sys
 import tkinter as tk
+import urllib.request
 from tkinter import filedialog, messagebox, ttk
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -25,6 +26,14 @@ import graf_format as gf                # noqa: E402
 ROOT = gf.ROOT
 ZOOM_DEFAULT = 16
 THUMB_SCALE = 4
+
+# Entorno del emulador (para el boton "Enviar a la SD y reiniciar").
+SD_IMAGE = os.environ.get("AVENTURA_SD", os.path.join(ROOT, "tarjeta.img"))
+SD_TOOL = os.environ.get(
+    "AVENTURA_SD_TOOL", r"D:\Proyectos\EmuladorFpga6502\tools\sd_tool.py")
+EMU_URL = os.environ.get("AVENTURA_EMU", "http://127.0.0.1:8080")
+SD_NAME = "GRAF.DAT"
+RUN_NAME = "AVENTURA.BI"
 
 
 def rgb_to_hex(col):
@@ -76,6 +85,8 @@ class Editor(tk.Tk):
         ttk.Button(top, text="Guardar", command=self.guardar).pack(side="left", padx=2)
         ttk.Button(top, text="Guardar como...", command=self.guardar_como).pack(side="left")
         ttk.Button(top, text="Recargar", command=self.recargar).pack(side="left", padx=2)
+        ttk.Button(top, text="Enviar a la SD y reiniciar",
+                   command=self.enviar_sd).pack(side="left", padx=(12, 2))
 
         body = ttk.Frame(self, padding=(6, 2, 6, 2))
         body.pack(side="top", fill="both", expand=True)
@@ -560,6 +571,80 @@ class Editor(tk.Tk):
         if not messagebox.askyesno("Recargar", "Descartar los cambios sin guardar?"):
             return
         self.abrir(self.graf.path, silencioso=True)
+
+    # ------------------------------------------------------------------
+    # Enviar a la SD del emulador y reiniciar el juego
+    # ------------------------------------------------------------------
+    def enviar_sd(self):
+        """Guarda, copia el .dat a la SD y reinicia el juego.
+
+        El juego lee GRAF.DAT de la SD **solo al arrancar**, asi que despues
+        de tocar la imagen hay que reiniciar la partida (R 0800).
+
+        Ojo: el emulador mantiene su propia copia del sistema de ficheros de
+        la SD en memoria y la puede volcar sobre la imagen, asi que lo
+        fiable es escribir el fichero por su propio protocolo
+        (/sdcard/write, que además remonta la tarjeta). Si el emulador no
+        esta en marcha se injecta en la imagen con sd_tool.py.
+        """
+        if not self.graf:
+            return
+        if not self.graf.path:
+            messagebox.showerror("Enviar a la SD", "Primero guarda el fichero.")
+            return
+        self.guardar()
+        with open(self.graf.path, "rb") as f:
+            datos = f.read()
+
+        # 1) escribir el .dat en la SD del emulador (y verificar)
+        copiado = False
+        try:
+            req = urllib.request.Request(
+                "%s/sdcard/write?name=%s" % (EMU_URL, SD_NAME),
+                data=datos, method="POST")
+            urllib.request.urlopen(req, timeout=20).read()
+            visto = urllib.request.urlopen(
+                "%s/sdcard/read?name=%s" % (EMU_URL, SD_NAME), timeout=10).read()
+            copiado = (visto == datos)
+        except Exception:             # noqa: BLE001
+            copiado = False
+
+        # 2) si no hay emulador, inyectar en la imagen de la SD
+        if not copiado:
+            if not os.path.exists(SD_IMAGE) or not os.path.exists(SD_TOOL):
+                messagebox.showerror(
+                    "Enviar a la SD",
+                    "No encuentro:\n  %s\n  %s\n\n"
+                    "Copia el .dat a la SD a mano y reinicia el juego (R 0800)."
+                    % (SD_IMAGE, SD_TOOL))
+                return
+            try:
+                import subprocess
+                subprocess.run([sys.executable, SD_TOOL, "inject", SD_IMAGE,
+                                self.graf.path, SD_NAME],
+                               check=True, capture_output=True)
+            except Exception as exc:  # noqa: BLE001
+                messagebox.showerror("Enviar a la SD",
+                                     "No se pudo copiar:\n%s" % exc)
+                return
+            try:
+                urllib.request.urlopen(EMU_URL + "/sdcard/remount",
+                                       timeout=5).read()
+            except Exception:         # noqa: BLE001
+                pass
+
+        # 3) reiniciar el juego para que recargue los patrones
+        try:
+            urllib.request.urlopen(
+                "%s/run?name=%s&addr=0800" % (EMU_URL, RUN_NAME),
+                timeout=15).read()
+            self.refrescar_estado("GRAF.DAT copiado a la SD y juego reiniciado")
+        except Exception as exc:      # noqa: BLE001
+            messagebox.showinfo(
+                "Enviar a la SD",
+                "Copiado a la SD.\n\nEl emulador no responde (%s):\n"
+                "pulsa R 0800 en el monitor para reiniciar y ver el cambio."
+                % exc)
 
     # ------------------------------------------------------------------
     # PNG

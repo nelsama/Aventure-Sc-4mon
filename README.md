@@ -218,6 +218,13 @@ En Windows tambien se puede lanzar con doble clic en `tools/graf_editor.bat`.
   se ajustan al color mas cercano de la paleta.
 - Volcado hexadecimal de los dos planos del registro, copiar, pegar y deshacer.
 - Al guardar deja una copia `GRAF.DAT.bak` y avisa en la barra de estado.
+- **Enviar a la SD y reiniciar**: copia el `GRAF.DAT` a la tarjeta SD del
+  emulador y reinicia la partida (el juego lee los patrones de la SD **solo al
+  arrancar**, asi que sin reiniciar no se ve ningun cambio). Ojo: el emulador
+  guarda su propia copia del sistema de ficheros de la SD en memoria y puede
+  volcarla sobre `tarjeta.img`, asi que el editor escribe el fichero por el
+  protocolo del propio emulador (`/sdcard/write`, que ya remonta la tarjeta) y
+  solo recurre a `sd_tool.py` si el emulador esta apagado.
 
 La logica del formato esta separada en `tools/graf_format.py` (no depende de
 Tkinter), por si se quiere usar desde la linea de ordenes:
