@@ -161,6 +161,18 @@ se detiene: sin patrones no hay graficos.
 - registros 22-63: **42 patrones de sprite** (jugador, dragones, objetos, caliz,
   corazon del HUD...).
 
+**El `.dat` NO guarda los colores RGB**, solo el indice 0-3 de cada pixel (el
+color 0 es transparente). Los colores estan en `game.c` (`bg_pal[4][4]` y
+`spr_pal[4][4]`) y se suben a la RAM de paletas del core de video al arrancar
+(`vc_pal_load_bg` / `vc_pal_load_spr`). Por eso el mismo patron puede verse en
+colores distintos: los tres dragones usan los mismos 8 registros (54-61) y solo
+cambia la paleta con la que se dibujan (`obj_pal`: rojo=2, verde=3, dorado=1).
+
+Para cambiar un color hay que tocar `game.c` y recompilar, no el `.dat`. El
+editor lee las paletas de `game.c` solo, asi que la vista previa es siempre la
+real, y expande el RGB444 del hardware (`(v<<4)|v`): por ejemplo `0x2E5BFF` se
+ve como `#EEBBFF`.
+
 El juego lo lee al arrancar con `rom_mfs_open` / `rom_mfs_read_via_zp` /
 `rom_mfs_close`, en streaming de 16 bytes, y lo escribe en la VRAM con
 `vc_load_bg_pattern` / `vc_load_spr_pattern`. Solo usa 16 bytes de buffer en

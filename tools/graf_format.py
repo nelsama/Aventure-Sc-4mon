@@ -27,6 +27,9 @@ W = H = 8           # tamano del patron
 TILE = W * H        # pixeles
 
 # Paletas reales del juego (bg_pal y spr_pal en game.c).
+# El .dat NO guarda los colores: solo el indice 0-3 de cada pixel. Los RGB
+# estan aqui (y en game.c) y se suben a la RAM de paletas del core de video al
+# arrancar (vc_pal_load_bg / vc_pal_load_spr).
 BG_PAL = {
     0: [(0x00, 0x00, 0x00), (0x00, 0xAA, 0x44), (0x00, 0x55, 0x22), (0xFF, 0xFF, 0xFF)],
     1: [(0x00, 0x00, 0x00), (0xFF, 0xCC, 0x00), (0x88, 0x44, 0x00), (0xFF, 0xFF, 0xFF)],
@@ -40,6 +43,60 @@ SPR_PAL = {
     2: [(0x00, 0x00, 0x00), (0xFF, 0x00, 0x00), (0xFF, 0x88, 0x00), (0xFF, 0xFF, 0xFF)],
     3: [(0x00, 0x00, 0x00), (0x00, 0xFF, 0x00), (0x00, 0x88, 0x00), (0xFF, 0xFF, 0xFF)],
 }
+
+GAME_C = os.path.join(ROOT, "game.c")
+
+
+def _expandir(nibble):
+    """El core guarda la paleta en RGB444 y la pasa a 8 bits con (v<<4)|v."""
+    return (nibble << 4) | nibble
+
+
+def _leer_paletas_game():
+    """Lee bg_pal y spr_pal de game.c (los colores que se ven de verdad).
+
+    Devuelve (bg, spr) o None si no encuentra el fichero.
+    """
+    import re
+
+    try:
+        with open(GAME_C, encoding="latin-1") as f:
+            src = f.read()
+    except OSError:
+        return None
+
+    def una(nombre):
+        m = re.search(nombre + r"\s*\[\s*4\s*\]\s*\[\s*4\s*\]\s*=\s*\{(.*?)\n\};",
+                      src, re.S)
+        if not m:
+            return None
+        filas = re.findall(r"\{([^{}]*)\}", m.group(1))
+        if len(filas) < 4:
+            return None
+        pals = {}
+        for i, fila in enumerate(filas[:4]):
+            hexes = re.findall(r"0x([0-9A-Fa-f]{6})", fila)
+            if len(hexes) < 3:
+                return None
+            cols = [(0, 0, 0)]
+            for h in hexes[:3]:
+                v = int(h, 16)
+                cols.append((_expandir((v >> 16) & 0xF),
+                             _expandir((v >> 8) & 0xF),
+                             _expandir(v & 0xF)))
+            pals[i] = cols
+        return pals
+
+    bg = una("bg_pal")
+    spr = una("spr_pal")
+    if not bg or not spr:
+        return None
+    return bg, spr
+
+
+_LEIDAS = _leer_paletas_game()
+if _LEIDAS:
+    BG_PAL, SPR_PAL = _LEIDAS
 
 # Paleta (0-3) que usa cada registro en el juego (ver game.c).
 BG_REC_PAL = (
