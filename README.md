@@ -175,6 +175,41 @@ python tools/mock_pedestal.py --write-graf # altar (0x92-0x95)
 python tools/mock_chalice.py --write-graf  # caliz con asas (sprite 0)
 ```
 
+### Editor grafico (GUI)
+
+Para **extraer** y **anadir** patrones sin tocar el binario a mano hay una
+aplicacion de escritorio (Tkinter, sin instalar nada mas que Pillow):
+
+```sh
+python tools/graf_editor.py            # abre assets/GRAF.DAT
+python tools/graf_editor.py otro.dat   # o cualquier otro fichero
+```
+
+En Windows tambien se puede lanzar con doble clic en `tools/graf_editor.bat`.
+
+![Editor de GRAF.DAT](doc/graf_editor.png)
+
+- Miniaturas de los 64 registros (22 de fondo + 42 de sprites) con la **paleta
+  real del juego**; se puede forzar otra paleta desde el desplegable.
+- Pintar pixel a pixel el registro elegido: **clic izquierdo** pinta el color
+  marcado y **clic derecho** pone el color 0 (transparente).
+- Vista del **grupo de 4 registros** que forma cada imagen de 16x16 (hoyo,
+  escalera, altar, sprites grandes).
+- **Exportar PNG (8x8)** y **Exportar PNG (16x16)**: saca el patron como imagen
+  con la paleta del juego.
+- **Importar PNG (8x8)** y **Importar PNG (16x16)**: una imagen de 16x16 entra
+  como 4 registros (TL, TR, BL, BR) y una de 8x8 como un registro. Los pixeles
+  se ajustan al color mas cercano de la paleta.
+- Volcado hexadecimal de los dos planos del registro, copiar, pegar y deshacer.
+- Al guardar deja una copia `GRAF.DAT.bak` y avisa en la barra de estado.
+
+La logica del formato esta separada en `tools/graf_format.py` (no depende de
+Tkinter), por si se quiere usar desde la linea de ordenes:
+
+```sh
+python tools/graf_format.py assets/GRAF.DAT   # volcado de los 64 registros
+```
+
 ## Detalles tecnicos
 
 - Objetivo `none` de cc65, CPU 6502. Binario autocontenido cargado en `$0800`.
