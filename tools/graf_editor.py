@@ -546,7 +546,11 @@ class Editor(tk.Tk):
         self.refrescar_estado("registro %d relleno con el color %d" % (self.sel, color))
 
     def desplazar(self, dx, dy):
-        """Mueve el patron un pixel en la direccion indicada (con vuelta)."""
+        """Mueve el patron un pixel en la direccion indicada.
+
+        No hay vuelta: lo que sale por un lado se pierde y por el otro entra
+        el color 0 (transparente).
+        """
         if not self.graf:
             return
         self._push_undo()
@@ -554,7 +558,10 @@ class Editor(tk.Tk):
         nuevo = [[0] * gf.W for _ in range(gf.H)]
         for y in range(gf.H):
             for x in range(gf.W):
-                nuevo[(y + dy) % gf.H][(x + dx) % gf.W] = pix[y][x]
+                ox = x - dx
+                oy = y - dy
+                if 0 <= ox < gf.W and 0 <= oy < gf.H:
+                    nuevo[y][x] = pix[oy][ox]
         self.graf.set(self.sel, gf.pixels_to_record(nuevo))
         self.refrescar()
         self.refrescar_estado("patron %d desplazado %+d,%+d"
