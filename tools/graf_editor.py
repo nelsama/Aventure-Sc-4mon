@@ -143,6 +143,13 @@ class Editor(tk.Tk):
         self.canvas_edit.bind("<B1-Motion>", self._paint)
         self.canvas_edit.bind("<Button-3>", self._paint)
         self.canvas_edit.bind("<B3-Motion>", self._paint)
+        row1 = ttk.Frame(l1)
+        row1.pack(side="top", anchor="w", pady=(4, 0))
+        ttk.Button(row1, text="Limpiar", command=self.limpiar).pack(side="left")
+        ttk.Button(row1, text="Todo color 1",
+                   command=lambda: self.rellenar(1)).pack(side="left", padx=2)
+        ttk.Button(row1, text="Todo color 2",
+                   command=lambda: self.rellenar(2)).pack(side="left")
 
         # lienzo 16x16
         l2 = ttk.Frame(mid)
@@ -205,7 +212,6 @@ class Editor(tk.Tk):
         ttk.Button(b2, text="Copiar", command=self.copiar).pack(side="left")
         ttk.Button(b2, text="Pegar", command=self.pegar).pack(side="left", padx=2)
         ttk.Button(b2, text="Deshacer", command=self.deshacer).pack(side="left")
-        ttk.Button(b2, text="Limpiar", command=self.limpiar).pack(side="left", padx=2)
         ttk.Label(b2, text="Zoom:").pack(side="left", padx=(12, 2))
         self.spin_zoom = ttk.Spinbox(b2, from_=8, to=32, width=4)
         self.spin_zoom.set(self.zoom)
@@ -509,6 +515,16 @@ class Editor(tk.Tk):
         self.graf.set(self.sel, bytes(gf.REC))
         self.refrescar()
         self.refrescar_estado("registro %d vaciado" % self.sel)
+
+    def rellenar(self, color):
+        """Rellena el registro con un solo color (0 = transparente)."""
+        if not self.graf:
+            return
+        self._push_undo()
+        pix = [[color] * gf.W for _ in range(gf.H)]
+        self.graf.set(self.sel, gf.pixels_to_record(pix))
+        self.refrescar()
+        self.refrescar_estado("registro %d relleno con el color %d" % (self.sel, color))
 
     def set_zoom(self):
         try:
