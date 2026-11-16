@@ -34,6 +34,8 @@ SD_TOOL = os.environ.get(
 EMU_URL = os.environ.get("AVENTURA_EMU", "http://127.0.0.1:8080")
 SD_NAME = "GRAF.DAT"
 RUN_NAME = "AVENTURA.BI"
+BIN_PATH = os.environ.get(
+    "AVENTURA_BIN", os.path.join(ROOT, "output", "aventura.bin"))
 
 
 def rgb_to_hex(col):
@@ -681,11 +683,21 @@ class Editor(tk.Tk):
             except Exception:         # noqa: BLE001
                 pass
 
-        # 3) reiniciar el juego para que recargue los patrones
+        # 3) reiniciar el juego para que recargue los patrones.
+        #    Ojo: se manda SIEMPRE un POST (aunque el cuerpo este vacio). El
+        #    servidor del emulador reutiliza el cuerpo de la peticion anterior
+        #    cuando esta no es un POST, asi que un GET /run despues de haber
+        #    escrito un fichero dejaria en la SD los bytes de ese fichero con
+        #    el nombre del binario (y lo corrupta).
         try:
-            urllib.request.urlopen(
+            cuerpo = b""
+            if os.path.exists(BIN_PATH):
+                with open(BIN_PATH, "rb") as f:
+                    cuerpo = f.read()
+            req = urllib.request.Request(
                 "%s/run?name=%s&addr=0800" % (EMU_URL, RUN_NAME),
-                timeout=15).read()
+                data=cuerpo, method="POST")
+            urllib.request.urlopen(req, timeout=15).read()
             self.refrescar_estado("GRAF.DAT copiado a la SD y juego reiniciado")
         except Exception as exc:      # noqa: BLE001
             messagebox.showinfo(

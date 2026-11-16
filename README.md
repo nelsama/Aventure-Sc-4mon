@@ -228,7 +228,11 @@ En Windows tambien se puede lanzar con doble clic en `tools/graf_editor.bat`.
   guarda su propia copia del sistema de ficheros de la SD en memoria y puede
   volcarla sobre `tarjeta.img`, asi que el editor escribe el fichero por el
   protocolo del propio emulador (`/sdcard/write`, que ya remonta la tarjeta) y
-  solo recurre a `sd_tool.py` si el emulador esta apagado.
+  solo recurre a `sd_tool.py` si el emulador esta apagado. El reinicio se pide
+  con un `POST /run` (con el binario de vuelta) porque el servidor del emulador
+  reutilizaba el cuerpo de la peticion anterior en las peticiones que no eran
+  POST (fallo corregido en el emulador, commit `ef9aeec`): con un `GET` el
+  `.dat` acababa escrito en la SD con el nombre del binario y lo corrompia.
 
 La logica del formato esta separada en `tools/graf_format.py` (no depende de
 Tkinter), por si se quiere usar desde la linea de ordenes:
