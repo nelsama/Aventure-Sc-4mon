@@ -79,6 +79,32 @@ def rec_pal_nombre(i, n_bg=22):
     return PAL_NOMBRE[(kind, rec_pal_index(i, n_bg))]
 
 
+# Grupos de 4 registros que forman una imagen 16x16 (indices de registro).
+# El orden de los 4 es TL, TR, BL, BR (ver draw16_fast en game.c).
+IMAGE_GROUPS = (
+    (10, 11, 12, 13),    # agujero
+    (14, 15, 16, 17),    # escalera
+    (18, 19, 20, 21),    # altar
+    (30, 31, 32, 33),    # jugador hacia abajo
+    (34, 35, 36, 37),    # jugador hacia arriba
+    (38, 39, 40, 41),    # jugador hacia la derecha
+    (42, 43, 44, 45),    # jugador hacia la izquierda
+    (46, 47, 48, 49),    # jugador caminando a la derecha
+    (50, 51, 52, 53),    # jugador caminando a la izquierda
+    (54, 55, 56, 57),    # dragon, frame 1
+    (58, 59, 60, 61),    # dragon, frame 2
+)
+
+
+def grupo_de(i):
+    """Los 4 registros de la imagen 16x16 a la que pertenece el registro i."""
+    for g in IMAGE_GROUPS:
+        if i in g:
+            return list(g)
+    base = (i // 4) * 4
+    return [base, base + 1, base + 2, base + 3]
+
+
 def default_n_bg(size):
     """Numero de registros de fondo a partir del tamano del fichero."""
     n = size // REC
@@ -254,16 +280,26 @@ def image16_to_records(im, pal):
 
 
 def composite(records, pal, scale=8, transparente=True):
-    """Compone 4 registros (TL, TR, BL, BR) en una imagen 16x16."""
+    """Compone 4 registros (TL, TR, BL, BR) en una imagen 16x16.
+
+    `pal` puede ser una sola paleta o una lista con una por registro.
+    """
     from PIL import Image
 
+    # `pal` puede ser una sola paleta (4 colores RGB) o una lista de paletas.
+    if isinstance(pal, (list, tuple)) and pal and isinstance(pal[0], (list, tuple)) \
+            and len(pal[0]) == 4:
+        pals = list(pal)
+    else:
+        pals = [pal] * len(records)
     out = Image.new("RGBA" if transparente else "RGB",
                     (2 * W * scale, 2 * H * scale),
                     (0, 0, 0, 0) if transparente else (0, 0, 0))
     for i, rec in enumerate(records[:4]):
         ox = (i % 2) * W * scale
         oy = (i // 2) * H * scale
-        out.paste(record_to_image(rec, pal, scale, transparente), (ox, oy))
+        p = pals[i % len(pals)]
+        out.paste(record_to_image(rec, p, scale, transparente), (ox, oy))
     return out
 
 

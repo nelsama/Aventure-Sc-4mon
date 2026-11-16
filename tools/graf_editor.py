@@ -49,6 +49,10 @@ class Editor(tk.Tk):
         self.clipboard = None
         self.thumb_photos = []
         self.thumb_rects = []
+        # Grupo de 4 registros (TL, TR, BL, BR) del mosaico 16x16.
+        self.quad = [0, 0, 0, 0]
+        self.quad_manual = False
+        self._updating = False
 
         self._build()
         self._bind_keys()
@@ -111,6 +115,8 @@ class Editor(tk.Tk):
 
         self.lbl_info = ttk.Label(right, text="", font=("Consolas", 10))
         self.lbl_info.pack(side="top", anchor="w")
+        self.lbl_grupo = ttk.Label(right, text="", font=("Consolas", 10))
+        self.lbl_grupo.pack(side="top", anchor="w")
 
         mid = ttk.Frame(right)
         mid.pack(side="top", anchor="w", pady=6)
@@ -134,6 +140,28 @@ class Editor(tk.Tk):
         self.canvas_grp = tk.Canvas(l2, bg="#101018", highlightthickness=0,
                                     width=ZOOM_DEFAULT * 16, height=ZOOM_DEFAULT * 16)
         self.canvas_grp.pack()
+        self.canvas_grp.bind("<Button-1>", self._grupo_click)
+
+        # eleccion de cada patron del mosaico 16x16
+        slots = ttk.Frame(l2)
+        slots.pack(side="top", anchor="w", pady=(4, 0))
+        self.quad_vars = []
+        self.quad_spins = []
+        for k, nombre in enumerate(("TL", "TR", "BL", "BR")):
+            ttk.Label(slots, text="%s:" % nombre).pack(side="left", padx=(0, 2))
+            var = tk.StringVar(value="0")
+            self.quad_vars.append(var)
+            sp = tk.Spinbox(slots, from_=0, to=63, width=4, textvariable=var,
+                            command=self._quad_changed)
+            sp.pack(side="left", padx=(0, 8))
+            sp.bind("<Return>", lambda e: self._quad_changed())
+            sp.bind("<FocusOut>", lambda e: self._quad_changed())
+            self.quad_spins.append(sp)
+        row = ttk.Frame(l2)
+        row.pack(side="top", anchor="w", pady=(4, 0))
+        ttk.Button(row, text="Grupo del registro", command=self.quad_bloque).pack(side="left")
+        ttk.Button(row, text="Aplicar a 4 registros", command=self.quad_aplicar).pack(side="left", padx=4)
+        ttk.Button(row, text="Exportar PNG (16x16)", command=self.exportar_png16).pack(side="left")
 
         # paleta de colores
         pal_frame = ttk.Frame(right)
@@ -285,6 +313,8 @@ class Editor(tk.Tk):
         self.lbl_info.config(text="registro %d (%s)  offset %d  paleta: %s"
                              % (i, "sprite" if self.graf.is_sprite(i) else "fondo",
                                 i * gf.REC, self.nombre_paleta(i)))
+        self.lbl_grupo.config(text="grupo: TL=%d  TR=%d  BL=%d  BR=%d"
+                               % tuple(self.quad))
         # lienzo 8x8
         cv = self.canvas_edit
         cv.delete("all")
@@ -300,28 +330,38 @@ class Editor(tk.Tk):
                     col = rgb_to_hex(pal[idx])
                 cv.create_rectangle(x * z, y * z, (x + 1) * z - 1, (y + 1) * z - 1,
                                     fill=col, outline="#181820")
-        # grupo de 4
-        base = (i // 4) * 4
+        # grupo de 4 (TL, TR, BL, BR) con el patron elegido en cada cuadrante
         cv2 = self.canvas_grp
         cv2.delete("all")
         cv2.configure(width=z * 2 * gf.W, height=z * 2 * gf.H)
         for k in range(4):
-            r = self.graf.get(min(base + k, len(self.graf) - 1))
+            idx = self.quad[k]
+            r = self.graf.get(min(idx, len(self.graf) - 1))
+            pal_k = self.paleta(idx)
             pix = gf.record_to_pixels(r)
             ox = (k % 2) * gf.W * z
             oy = (k // 2) * gf.H * z
             for y in range(gf.H):
                 for x in range(gf.W):
-                    idx = pix[y][x]
-                    col = "#303040" if idx == 0 else rgb_to_hex(pal[idx])
+                    idxc = pix[y][x]
+                    col = "#303040" if idxc == 0 else rgb_to_hex(pal_k[idxc])
                     cv2.create_rectangle(ox + x * z, oy + y * z,
                                          ox + (x + 1) * z - 1, oy + (y + 1) * z - 1,
                                          fill=col, outline="#181820")
+            # numero del registro en la esquina del cuadrante
+            cv2.create_text(ox + 3, oy + 3, text=str(self.quad[k]),
+                            fill="#ffcc00", font=("Consolas", 8), anchor="nw")
         # volcado hex
         self.txt_hex.delete("1.0", "end")
         self.txt_hex.insert("1.0", "plano0  plano1\n")
         self.txt_hex.insert("end", gf.record_to_text(rec) + "\n")
         self.txt_hex.config(state="disabled")
+        # sincronizar los selectores del grupo con el mosaico mostrado
+        if not self._updating:
+            self._updating = True
+            for k, var in enumerate(self.quad_vars):
+                var.set(str(self.quad[k]))
+            self._updating = False
 
     def refrescar_estado(self, msg=""):
         if msg:
@@ -334,11 +374,75 @@ class Editor(tk.Tk):
         if not self.graf or i >= len(self.graf):
             return
         self.sel = i
+        if not self.quad_manual:
+            # el grupo sigue a la imagen 16x16 del registro seleccionado
+            self.quad = gf.grupo_de(i)
         self.refrescar_colores()
         self.refrescar_thumbs()
         self.refrescar_editor()
         self.refrescar_estado("registro %d seleccionado (%s)"
                               % (i, self.nombre_paleta(i)))
+
+    # ------------------------------------------------------------------
+    # Grupo de 4 registros (mosaico 16x16)
+    # ------------------------------------------------------------------
+    def _quad_changed(self):
+        """Alguno de los 4 selectores del grupo cambio."""
+        if self._updating or not self.graf:
+            return
+        vals = []
+        for k, var in enumerate(self.quad_vars):
+            try:
+                v = int(var.get())
+            except ValueError:
+                v = self.quad[k]
+            vals.append(max(0, min(len(self.graf) - 1, v)))
+        if vals != self.quad:
+            self.quad = vals
+            self.quad_manual = True
+            self.refrescar_editor()
+            self.refrescar_estado("grupo: TL=%d TR=%d BL=%d BR=%d" % tuple(self.quad))
+
+    def quad_bloque(self):
+        """Vuelve al grupo de 4 registros de la imagen del registro elegido."""
+        if not self.graf:
+            return
+        self.quad = gf.grupo_de(self.sel)
+        self.quad_manual = False
+        self.refrescar_editor()
+        self.refrescar_estado("grupo: %d..%d" % (self.quad[0], self.quad[3]))
+
+    def quad_aplicar(self):
+        """Escribe los 4 patrones del grupo en los 4 registros de la imagen."""
+        if not self.graf:
+            return
+        base = gf.grupo_de(self.sel)[0]
+        if base + 3 >= len(self.graf):
+            return
+        if not messagebox.askyesno(
+                "Aplicar grupo",
+                "Escribir TL=%d, TR=%d, BL=%d, BR=%d en los registros %d..%d?"
+                % (self.quad[0], self.quad[1], self.quad[2], self.quad[3],
+                   base, base + 3)):
+            return
+        self._push_undo()
+        origen = [bytes(self.graf.get(self.quad[k])) for k in range(4)]
+        for k in range(4):
+            self.graf.set(base + k, origen[k])
+        self.refrescar()
+        self.refrescar_estado("grupo aplicado en los registros %d..%d" % (base, base + 3))
+
+    def _grupo_click(self, event):
+        """Clic en un cuadrante del mosaico: editar ese patron."""
+        if not self.graf:
+            return
+        z = self.zoom
+        col = event.x // (gf.W * z)
+        fila = event.y // (gf.H * z)
+        if not (0 <= col <= 1 and 0 <= fila <= 1):
+            return
+        k = fila * 2 + col
+        self.seleccionar(self.quad[k])
 
     def _paint(self, event):
         if not self.graf:
@@ -483,11 +587,13 @@ class Editor(tk.Tk):
         ruta = self._ruta_export("_16x16")
         if not ruta:
             return
-        base = (self.sel // 4) * 4
-        recs = [self.graf.get(base + k) for k in range(4) if base + k < len(self.graf)]
-        im = gf.composite(recs, self.paleta(), 16, transparente=True)
+        recs = [self.graf.get(self.quad[k]) for k in range(4)]
+        pals = [self.paleta(self.quad[k]) for k in range(4)]
+        im = gf.composite(recs, pals, 16, transparente=True)
         im.save(ruta)
-        self.refrescar_estado("exportado %s" % ruta)
+        self.refrescar_estado("exportado %s (TL=%d TR=%d BL=%d BR=%d)"
+                              % (ruta, self.quad[0], self.quad[1],
+                                 self.quad[2], self.quad[3]))
 
     def _importar(self, ruta, n):
         if not self.graf:

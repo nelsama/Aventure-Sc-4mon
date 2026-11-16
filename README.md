@@ -200,7 +200,17 @@ En Windows tambien se puede lanzar con doble clic en `tools/graf_editor.bat`.
 - Pintar pixel a pixel el registro elegido: **clic izquierdo** pinta el color
   marcado y **clic derecho** pone el color 0 (transparente).
 - Vista del **grupo de 4 registros** que forma cada imagen de 16x16 (hoyo,
-  escalera, altar, sprites grandes).
+  escalera, altar, jugador, dragones). Cada cuadrante (TL, TR, BL, BR) tiene su
+  propio selector para **elegir que patron se pone en cada uno**, asi que se
+  pueden componer imagenes 16x16 con patrones de cualquier parte del fichero:
+  - al seleccionar un registro, el grupo se ajusta solo a la imagen a la que
+    pertenece (por ejemplo, el registro 11 es la parte superior derecha del
+    agujero);
+  - clic en un cuadrante del mosaico: edita ese patron;
+  - **Aplicar a 4 registros**: escribe los 4 patrones del grupo en los 4
+    registros de la imagen (con confirmacion y deshacer);
+  - **Exportar PNG (16x16)** exporta el mosaico tal y como se ve, con la paleta
+    de cada patron.
 - **Exportar PNG (8x8)** y **Exportar PNG (16x16)**: saca el patron como imagen
   con la paleta del juego.
 - **Importar PNG (8x8)** y **Importar PNG (16x16)**: una imagen de 16x16 entra
