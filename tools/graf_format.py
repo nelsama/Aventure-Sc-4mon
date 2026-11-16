@@ -41,6 +41,43 @@ SPR_PAL = {
     3: [(0x00, 0x00, 0x00), (0x00, 0xFF, 0x00), (0x00, 0x88, 0x00), (0xFF, 0xFF, 0xFF)],
 }
 
+# Paleta (0-3) que usa cada registro en el juego (ver game.c).
+BG_REC_PAL = (
+    0, 0, 1, 1, 2, 2, 1, 0, 0, 0,      # 0-9: base (hierba, arbol, suelo, muro, ...)
+    1, 1, 1, 1,                        # 10-13: agujero (madera)
+    3, 3, 3, 3,                        # 14-17: escalera (piedra)
+    1, 1, 1, 1,                        # 18-21: altar
+)
+
+SPR_REC_PAL = (
+    1, 1, 1, 2, 1, 0, 0, 1,            # 0-7: caliz, espada, puente, iman, llaves, murcielago
+) + (0,) * 24 + (2,) * 8 + (1, 2)     # 8-31 jugador, 32-39 dragon, 40 puente, 41 corazon
+
+PAL_NOMBRE = {
+    ("fondo", 0): "fondo 0 (verde)",
+    ("fondo", 1): "fondo 1 (oro/madera)",
+    ("fondo", 2): "fondo 2 (azul)",
+    ("fondo", 3): "fondo 3 (gris)",
+    ("sprite", 0): "sprite 0 (azul/oro)",
+    ("sprite", 1): "sprite 1 (dorado)",
+    ("sprite", 2): "sprite 2 (rojo)",
+    ("sprite", 3): "sprite 3 (verde)",
+}
+
+
+def rec_pal_index(i, n_bg=22):
+    """Indice de paleta (0-3) que usa el registro i en el juego."""
+    if i < n_bg:
+        return BG_REC_PAL[i] if i < len(BG_REC_PAL) else 0
+    k = i - n_bg
+    return SPR_REC_PAL[k] if k < len(SPR_REC_PAL) else 0
+
+
+def rec_pal_nombre(i, n_bg=22):
+    """Nombre de la paleta que usa el registro i en el juego."""
+    kind = "sprite" if i >= n_bg else "fondo"
+    return PAL_NOMBRE[(kind, rec_pal_index(i, n_bg))]
+
 
 def default_n_bg(size):
     """Numero de registros de fondo a partir del tamano del fichero."""

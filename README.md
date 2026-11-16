@@ -183,6 +183,7 @@ aplicacion de escritorio (Tkinter, sin instalar nada mas que Pillow):
 ```sh
 python tools/graf_editor.py            # abre assets/GRAF.DAT
 python tools/graf_editor.py otro.dat   # o cualquier otro fichero
+python tools/graf_editor.py assets/GRAF.DAT 36   # abre con un registro elegido
 ```
 
 En Windows tambien se puede lanzar con doble clic en `tools/graf_editor.bat`.
@@ -191,6 +192,11 @@ En Windows tambien se puede lanzar con doble clic en `tools/graf_editor.bat`.
 
 - Miniaturas de los 64 registros (22 de fondo + 42 de sprites) con la **paleta
   real del juego**; se puede forzar otra paleta desde el desplegable.
+- La **paleta cambia sola al seleccionar un patron**: es la que le pone el juego
+  (hoyo en madera, escalera en gris, altar en oro, jugador en azul/oro, iman y
+  dragon en rojo, corazon en rojo...). Los botones de color y la vista previa
+  siguen esa paleta, y el desplegable permite forzar otra para ver como
+  quedaria con otros colores.
 - Pintar pixel a pixel el registro elegido: **clic izquierdo** pinta el color
   marcado y **clic derecho** pone el color 0 (transparente).
 - Vista del **grupo de 4 registros** que forma cada imagen de 16x16 (hoyo,

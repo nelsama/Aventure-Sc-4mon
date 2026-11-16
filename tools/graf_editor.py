@@ -139,9 +139,12 @@ class Editor(tk.Tk):
         pal_frame = ttk.Frame(right)
         pal_frame.pack(side="top", anchor="w", pady=(4, 4))
         ttk.Label(pal_frame, text="Color:").pack(side="left", padx=(0, 6))
+        self.lbl_pal = ttk.Label(pal_frame, text="")
+        self.lbl_pal.pack(side="left", padx=(0, 10))
         self.color_buttons = []
         for i in range(4):
-            b = tk.Button(pal_frame, width=3, text=str(i), command=(lambda k: self.set_color(k))(i))
+            b = tk.Button(pal_frame, width=3, text=str(i),
+                          command=lambda k=i: self.set_color(k))
             b.pack(side="left", padx=2)
             self.color_buttons.append(b)
 
@@ -186,16 +189,30 @@ class Editor(tk.Tk):
     # Paleta y refresco
     # ------------------------------------------------------------------
     def paleta(self, i=None):
-        """Paleta (4 colores RGB) con la que se ve el registro i."""
+        """Paleta (4 colores RGB) con la que se ve el registro i.
+
+        En modo "auto" se usa la paleta que el juego aplica a ese patron; el
+        desplegable permite forzar otra para ver como quedaria con otros
+        colores.
+        """
         i = self.sel if i is None else i
         modo = self.cmb_pal.get()
         if self.graf is None:
             return gf.BG_PAL[0]
         if modo == "auto":
-            return gf.SPR_PAL[0] if self.graf.is_sprite(i) else gf.BG_PAL[0]
+            idx = gf.rec_pal_index(i, self.graf.n_bg)
+            return gf.SPR_PAL[idx] if self.graf.is_sprite(i) else gf.BG_PAL[idx]
         if modo.startswith("fondo"):
             return gf.BG_PAL[int(modo[-1])]
         return gf.SPR_PAL[int(modo[-1])]
+
+    def nombre_paleta(self, i=None):
+        i = self.sel if i is None else i
+        if self.graf is None:
+            return "-"
+        if self.cmb_pal.get() != "auto":
+            return self.cmb_pal.get()
+        return gf.rec_pal_nombre(i, self.graf.n_bg)
 
     def set_color(self, k):
         self.color = k
@@ -211,6 +228,7 @@ class Editor(tk.Tk):
                 b.config(bg=rgb_to_hex(pal[k]), fg="#101018",
                          activebackground=rgb_to_hex(pal[k]))
             b.config(relief="sunken" if k == self.color else "raised")
+        self.lbl_pal.config(text="(%s)" % self.nombre_paleta())
 
     def refrescar(self):
         if not self.graf:
@@ -264,9 +282,9 @@ class Editor(tk.Tk):
         i = self.sel
         rec = self.graf.get(i)
         pal = self.paleta(i)
-        self.lbl_info.config(text="registro %d (%s)  offset %d"
+        self.lbl_info.config(text="registro %d (%s)  offset %d  paleta: %s"
                              % (i, "sprite" if self.graf.is_sprite(i) else "fondo",
-                                i * gf.REC))
+                                i * gf.REC, self.nombre_paleta(i)))
         # lienzo 8x8
         cv = self.canvas_edit
         cv.delete("all")
@@ -316,9 +334,11 @@ class Editor(tk.Tk):
         if not self.graf or i >= len(self.graf):
             return
         self.sel = i
+        self.refrescar_colores()
         self.refrescar_thumbs()
         self.refrescar_editor()
-        self.refrescar_estado("registro %d seleccionado" % i)
+        self.refrescar_estado("registro %d seleccionado (%s)"
+                              % (i, self.nombre_paleta(i)))
 
     def _paint(self, event):
         if not self.graf:
@@ -531,8 +551,12 @@ class Editor(tk.Tk):
 
 
 def main(argv):
-    path = argv[1] if len(argv) > 1 else None
+    args = [a for a in argv[1:] if not a.startswith("-")]
+    path = args[0] if args else None
+    sel = int(args[1]) if len(args) > 1 else None
     app = Editor(path)
+    if sel is not None:
+        app.seleccionar(sel)
     app.mainloop()
     return 0
 
