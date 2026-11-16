@@ -42,11 +42,17 @@ def rgb_to_hex(col):
     return "#%02X%02X%02X" % col
 
 
+def _espejar(rec):
+    """Espeja horizontalmente un registro 8x8 (invierte cada fila)."""
+    pix = gf.record_to_pixels(rec)
+    return gf.pixels_to_record([list(reversed(fila)) for fila in pix])
+
+
 class Editor(tk.Tk):
     def __init__(self, path=None):
         super().__init__()
         self.title("GRAF.DAT - editor de patrones")
-        self.geometry("1180x780")
+        self.geometry("1260x780")
         self.minsize(1000, 700)
 
         self.graf = None
@@ -169,6 +175,8 @@ class Editor(tk.Tk):
                    command=lambda: self.rellenar(1)).pack(side="left", padx=2)
         ttk.Button(row1, text="Todo color 2",
                    command=lambda: self.rellenar(2)).pack(side="left")
+        ttk.Button(row1, text="Flip horizontal",
+                   command=self.girar8).pack(side="left", padx=(8, 0))
 
         # lienzo 16x16
         l2 = ttk.Frame(mid)
@@ -198,7 +206,8 @@ class Editor(tk.Tk):
         row.pack(side="top", anchor="w", pady=(4, 0))
         ttk.Button(row, text="Grupo del registro", command=self.quad_bloque).pack(side="left")
         ttk.Button(row, text="Aplicar a 4 registros", command=self.quad_aplicar).pack(side="left", padx=4)
-        ttk.Button(row, text="Exportar PNG (16x16)", command=self.exportar_png16).pack(side="left")
+        ttk.Button(row, text="Flip horizontal", command=self.girar16).pack(side="left")
+        ttk.Button(row, text="Exportar PNG (16x16)", command=self.exportar_png16).pack(side="left", padx=4)
 
         # paleta de colores
         pal_frame = ttk.Frame(right)
@@ -574,6 +583,46 @@ class Editor(tk.Tk):
         self.refrescar()
         self.refrescar_estado("patron %d desplazado %+d,%+d"
                               % (self.sel, dx, dy))
+
+    # ------------------------------------------------------------------
+    # Espejo horizontal
+    # ------------------------------------------------------------------
+    def girar8(self):
+        """Espeja horizontalmente el patron 8x8 seleccionado."""
+        if not self.graf:
+            return
+        self._push_undo()
+        self.graf.set(self.sel, _espejar(self.graf.get(self.sel)))
+        self.refrescar()
+        self.refrescar_estado("patron %d espejado" % self.sel)
+
+    def girar16(self):
+        """Espeja horizontalmente el mosaico 16x16 y lo escribe en la imagen.
+
+        El espejo de una imagen 16x16 es espejar cada cuadrante y ademas
+        intercambiar TL<->TR y BL<->BR.
+        """
+        if not self.graf:
+            return
+        base = gf.grupo_de(self.sel)[0]
+        if base + 3 >= len(self.graf):
+            return
+        if not messagebox.askyesno(
+                "Flip horizontal",
+                "Espejar el mosaico y escribirlo en los registros %d..%d?"
+                % (base, base + 3)):
+            return
+        origen = [bytes(self.graf.get(self.quad[k])) for k in range(4)]
+        espejo = [_espejar(origen[1]), _espejar(origen[0]),
+                  _espejar(origen[3]), _espejar(origen[2])]
+        self._push_undo()
+        for k in range(4):
+            self.graf.set(base + k, espejo[k])
+        self.quad = gf.grupo_de(self.sel)
+        self.quad_manual = False
+        self.refrescar()
+        self.refrescar_estado("mosaico espejado en los registros %d..%d"
+                              % (base, base + 3))
 
     def set_zoom(self):
         try:

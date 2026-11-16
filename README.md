@@ -212,10 +212,11 @@ En Windows tambien se puede lanzar con doble clic en `tools/graf_editor.bat`.
 - Pintar pixel a pixel el registro elegido: **clic izquierdo** pinta el color
   marcado y **clic derecho** pone el color 0 (transparente). Junto al patrón
   hay botones para **Limpiar** (vaciarlo), **Todo color 1** y **Todo color 2**
-  (rellenarlo de un color) y una **cruceta de flechas** (▲ ◄ ▼ ►) a la derecha
-  del patrón que lo desplazan un píxel; las flechas del teclado hacen lo mismo
-  cuando el lienzo tiene el foco. El desplazamiento **no da la vuelta**: lo que
-  sale por un lado se pierde y por el otro entra el color 0 (transparente).
+  (rellenarlo de un color), un **Flip horizontal** (espeja el patrón) y una
+  **cruceta de flechas** (▲ ◄ ▼ ►) a la derecha del patrón que lo desplazan un
+  píxel; las flechas del teclado hacen lo mismo cuando el lienzo tiene el foco.
+  El desplazamiento **no da la vuelta**: lo que sale por un lado se pierde y por
+  el otro entra el color 0 (transparente).
 - Vista del **grupo de 4 registros** que forma cada imagen de 16x16 (hoyo,
   escalera, altar, jugador, dragones). Cada cuadrante (TL, TR, BL, BR) tiene su
   propio selector para **elegir que patron se pone en cada uno**, asi que se
@@ -226,6 +227,8 @@ En Windows tambien se puede lanzar con doble clic en `tools/graf_editor.bat`.
   - clic en un cuadrante del mosaico: edita ese patron;
   - **Aplicar a 4 registros**: escribe los 4 patrones del grupo en los 4
     registros de la imagen (con confirmacion y deshacer);
+  - **Flip horizontal**: espeja el mosaico entero (espeja cada cuadrante e
+    intercambia TL<->TR y BL<->BR) y lo escribe en los 4 registros de la imagen;
   - **Exportar PNG (16x16)** exporta el mosaico tal y como se ve, con la paleta
     de cada patron.
 - **Exportar PNG (8x8)** y **Exportar PNG (16x16)**: saca el patron como imagen
