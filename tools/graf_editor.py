@@ -137,12 +137,18 @@ class Editor(tk.Tk):
         l1.pack(side="left", padx=(0, 14))
         ttk.Label(l1, text="Patron 8x8 (2 planos)").pack(anchor="w")
         self.canvas_edit = tk.Canvas(l1, bg="#101018", highlightthickness=0,
-                                     width=ZOOM_DEFAULT * 8, height=ZOOM_DEFAULT * 8)
+                                     width=ZOOM_DEFAULT * 8, height=ZOOM_DEFAULT * 8,
+                                     takefocus=True)
         self.canvas_edit.pack()
         self.canvas_edit.bind("<Button-1>", self._paint)
         self.canvas_edit.bind("<B1-Motion>", self._paint)
         self.canvas_edit.bind("<Button-3>", self._paint)
         self.canvas_edit.bind("<B3-Motion>", self._paint)
+        # flechas del teclado: desplazar el patron un pixel
+        self.canvas_edit.bind("<Up>", lambda e: self.desplazar(0, -1))
+        self.canvas_edit.bind("<Down>", lambda e: self.desplazar(0, 1))
+        self.canvas_edit.bind("<Left>", lambda e: self.desplazar(-1, 0))
+        self.canvas_edit.bind("<Right>", lambda e: self.desplazar(1, 0))
         row1 = ttk.Frame(l1)
         row1.pack(side="top", anchor="w", pady=(4, 0))
         ttk.Button(row1, text="Limpiar", command=self.limpiar).pack(side="left")
@@ -150,6 +156,16 @@ class Editor(tk.Tk):
                    command=lambda: self.rellenar(1)).pack(side="left", padx=2)
         ttk.Button(row1, text="Todo color 2",
                    command=lambda: self.rellenar(2)).pack(side="left")
+        ttk.Separator(row1, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Button(row1, text="◄", width=3,
+                   command=lambda: self.desplazar(-1, 0)).pack(side="left")
+        ttk.Button(row1, text="▲", width=3,
+                   command=lambda: self.desplazar(0, -1)).pack(side="left", padx=1)
+        ttk.Button(row1, text="▼", width=3,
+                   command=lambda: self.desplazar(0, 1)).pack(side="left", padx=1)
+        ttk.Button(row1, text="►", width=3,
+                   command=lambda: self.desplazar(1, 0)).pack(side="left", padx=1)
+        ttk.Label(row1, text="(flechas del teclado)").pack(side="left", padx=6)
 
         # lienzo 16x16
         l2 = ttk.Frame(mid)
@@ -464,6 +480,7 @@ class Editor(tk.Tk):
     def _paint(self, event):
         if not self.graf:
             return
+        self.canvas_edit.focus_set()
         x = event.x // self.zoom
         y = event.y // self.zoom
         if not (0 <= x < gf.W and 0 <= y < gf.H):
@@ -525,6 +542,21 @@ class Editor(tk.Tk):
         self.graf.set(self.sel, gf.pixels_to_record(pix))
         self.refrescar()
         self.refrescar_estado("registro %d relleno con el color %d" % (self.sel, color))
+
+    def desplazar(self, dx, dy):
+        """Mueve el patron un pixel en la direccion indicada (con vuelta)."""
+        if not self.graf:
+            return
+        self._push_undo()
+        pix = gf.record_to_pixels(self.graf.get(self.sel))
+        nuevo = [[0] * gf.W for _ in range(gf.H)]
+        for y in range(gf.H):
+            for x in range(gf.W):
+                nuevo[(y + dy) % gf.H][(x + dx) % gf.W] = pix[y][x]
+        self.graf.set(self.sel, gf.pixels_to_record(nuevo))
+        self.refrescar()
+        self.refrescar_estado("patron %d desplazado %+d,%+d"
+                              % (self.sel, dx, dy))
 
     def set_zoom(self):
         try:
