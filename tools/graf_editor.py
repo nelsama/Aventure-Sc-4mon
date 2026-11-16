@@ -138,10 +138,12 @@ class Editor(tk.Tk):
         l1 = ttk.Frame(mid)
         l1.pack(side="left", padx=(0, 14))
         ttk.Label(l1, text="Patron 8x8 (2 planos)").pack(anchor="w")
-        self.canvas_edit = tk.Canvas(l1, bg="#101018", highlightthickness=0,
+        cuerpo1 = ttk.Frame(l1)
+        cuerpo1.pack(anchor="w")
+        self.canvas_edit = tk.Canvas(cuerpo1, bg="#101018", highlightthickness=0,
                                      width=ZOOM_DEFAULT * 8, height=ZOOM_DEFAULT * 8,
                                      takefocus=True)
-        self.canvas_edit.pack()
+        self.canvas_edit.pack(side="left")
         self.canvas_edit.bind("<Button-1>", self._paint)
         self.canvas_edit.bind("<B1-Motion>", self._paint)
         self.canvas_edit.bind("<Button-3>", self._paint)
@@ -151,6 +153,15 @@ class Editor(tk.Tk):
         self.canvas_edit.bind("<Down>", lambda e: self.desplazar(0, 1))
         self.canvas_edit.bind("<Left>", lambda e: self.desplazar(-1, 0))
         self.canvas_edit.bind("<Right>", lambda e: self.desplazar(1, 0))
+        # cruceta de flechas a la derecha del patron
+        pad = ttk.Frame(cuerpo1)
+        pad.pack(side="left", padx=(10, 0))
+        self._boton_flecha(pad, "▲", 0, -1, 0, 1)
+        self._boton_flecha(pad, "◄", -1, 0, 1, 0)
+        self._boton_flecha(pad, "►", 1, 0, 1, 2)
+        self._boton_flecha(pad, "▼", 0, 1, 2, 1)
+        ttk.Label(pad, text="un pixel", font=("Consolas", 7),
+                  foreground="#a0a0b0").grid(row=3, column=0, columnspan=3)
         row1 = ttk.Frame(l1)
         row1.pack(side="top", anchor="w", pady=(4, 0))
         ttk.Button(row1, text="Limpiar", command=self.limpiar).pack(side="left")
@@ -158,16 +169,6 @@ class Editor(tk.Tk):
                    command=lambda: self.rellenar(1)).pack(side="left", padx=2)
         ttk.Button(row1, text="Todo color 2",
                    command=lambda: self.rellenar(2)).pack(side="left")
-        ttk.Separator(row1, orient="vertical").pack(side="left", fill="y", padx=6)
-        ttk.Button(row1, text="◄", width=3,
-                   command=lambda: self.desplazar(-1, 0)).pack(side="left")
-        ttk.Button(row1, text="▲", width=3,
-                   command=lambda: self.desplazar(0, -1)).pack(side="left", padx=1)
-        ttk.Button(row1, text="▼", width=3,
-                   command=lambda: self.desplazar(0, 1)).pack(side="left", padx=1)
-        ttk.Button(row1, text="►", width=3,
-                   command=lambda: self.desplazar(1, 0)).pack(side="left", padx=1)
-        ttk.Label(row1, text="(flechas del teclado)").pack(side="left", padx=6)
 
         # lienzo 16x16
         l2 = ttk.Frame(mid)
@@ -401,6 +402,13 @@ class Editor(tk.Tk):
     def refrescar_estado(self, msg=""):
         if msg:
             self.lbl_status.config(text=msg)
+
+    def _boton_flecha(self, parent, texto, dx, dy, fila, col):
+        """Boton de la cruceta para desplazar el patron un pixel."""
+        b = ttk.Button(parent, text=texto, width=3,
+                       command=lambda: self.desplazar(dx, dy))
+        b.grid(row=fila, column=col, padx=1, pady=1)
+        return b
 
     # ------------------------------------------------------------------
     # Seleccion y pintura
