@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Editor grafico de GRAF.DAT (patrones de tiles y sprites del juego AVENTURA).
+"""Editor grafico de AVENTUR.DAT (patrones de tiles y sprites del juego AVENTURA).
 
 Permite:
-  - abrir y guardar assets/GRAF.DAT (con copia .bak);
+  - abrir y guardar assets/AVENTUR.DAT (con copia .bak);
   - ver los 64 registros (22 de fondo + 42 de sprites) en miniatura;
   - pintar pixel a pixel el registro elegido (2 planos, 4 colores);
   - exportar un registro (o un grupo de 4 registros) a PNG;
@@ -32,7 +32,7 @@ SD_IMAGE = os.environ.get("AVENTURA_SD", os.path.join(ROOT, "tarjeta.img"))
 SD_TOOL = os.environ.get(
     "AVENTURA_SD_TOOL", r"D:\Proyectos\EmuladorFpga6502\tools\sd_tool.py")
 EMU_URL = os.environ.get("AVENTURA_EMU", "http://127.0.0.1:8080")
-SD_NAME = "GRAF.DAT"
+SD_NAME = "AVENTUR.DAT"
 RUN_NAME = "AVENTURA.BI"
 BIN_PATH = os.environ.get(
     "AVENTURA_BIN", os.path.join(ROOT, "output", "aventura.bin"))
@@ -51,7 +51,7 @@ def _espejar(rec):
 class Editor(tk.Tk):
     def __init__(self, path=None):
         super().__init__()
-        self.title("GRAF.DAT - editor de patrones")
+        self.title("AVENTUR.DAT - editor de patrones")
         self.geometry("1260x780")
         self.minsize(1000, 700)
 
@@ -77,7 +77,7 @@ class Editor(tk.Tk):
         if path:
             self.abrir(path)
         else:
-            self.abrir(gf.GRAF_PATH, silencioso=True)
+            self.abrir(gf.DAT_PATH, silencioso=True)
 
     # ------------------------------------------------------------------
     # Interfaz
@@ -638,9 +638,9 @@ class Editor(tk.Tk):
     def abrir(self, path=None, silencioso=False):
         if path is None:
             path = filedialog.askopenfilename(
-                title="Abrir GRAF.DAT",
+                title="Abrir AVENTUR.DAT",
                 initialdir=os.path.join(ROOT, "assets"),
-                filetypes=[("GRAF.DAT", "*.DAT"), ("Todos", "*.*")])
+                filetypes=[("AVENTUR.DAT", "*.DAT"), ("Todos", "*.*")])
             if not path:
                 return
         try:
@@ -657,7 +657,7 @@ class Editor(tk.Tk):
     def guardar(self):
         if not self.graf:
             return
-        path = self.graf.path or os.path.join(ROOT, "assets", "GRAF.DAT")
+        path = self.graf.path or os.path.join(ROOT, "assets", "AVENTUR.DAT")
         self._escribir(path)
 
     def guardar_como(self):
@@ -666,8 +666,8 @@ class Editor(tk.Tk):
         path = filedialog.asksaveasfilename(
             title="Guardar como", defaultextension=".DAT",
             initialdir=os.path.join(ROOT, "assets"),
-            initialfile=os.path.basename(self.graf.path or "GRAF.DAT"),
-            filetypes=[("GRAF.DAT", "*.DAT"), ("Todos", "*.*")])
+            initialfile=os.path.basename(self.graf.path or "AVENTUR.DAT"),
+            filetypes=[("AVENTUR.DAT", "*.DAT"), ("Todos", "*.*")])
         if path:
             self._escribir(path)
 
@@ -692,7 +692,7 @@ class Editor(tk.Tk):
     def enviar_sd(self):
         """Guarda, copia el .dat a la SD y reinicia el juego.
 
-        El juego lee GRAF.DAT de la SD **solo al arrancar**, asi que despues
+        El juego lee AVENTUR.DAT de la SD **solo al arrancar**, asi que despues
         de tocar la imagen hay que reiniciar la partida (R 0800).
 
         Ojo: el emulador mantiene su propia copia del sistema de ficheros de
@@ -762,7 +762,7 @@ class Editor(tk.Tk):
                 "%s/run?name=%s&addr=0800" % (EMU_URL, RUN_NAME),
                 data=cuerpo, method="POST")
             urllib.request.urlopen(req, timeout=15).read()
-            self.refrescar_estado("GRAF.DAT copiado a la SD y juego reiniciado")
+            self.refrescar_estado("AVENTUR.DAT copiado a la SD y juego reiniciado")
         except Exception as exc:      # noqa: BLE001
             messagebox.showinfo(
                 "Enviar a la SD",
@@ -774,7 +774,7 @@ class Editor(tk.Tk):
     # PNG
     # ------------------------------------------------------------------
     def _ruta_export(self, sufijo):
-        base = os.path.basename(self.graf.path or "GRAF.DAT")
+        base = os.path.basename(self.graf.path or "AVENTUR.DAT")
         return filedialog.asksaveasfilename(
             title="Exportar PNG", defaultextension=".png", initialdir=os.path.join(ROOT, "doc"),
             initialfile="%s_%02d%s.png" % (base.split(".")[0], self.sel, sufijo),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Nucleo del formato GRAF.DAT (patrones del juego AVENTURA).
+"""Nucleo del formato AVENTUR.DAT (patrones del juego AVENTURA).
 
 Formato (1024 bytes = 64 registros de 16 bytes):
 
@@ -20,7 +20,7 @@ tambien se puede usar desde la linea de ordenes.
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-GRAF_PATH = os.path.join(ROOT, "assets", "GRAF.DAT")
+DAT_PATH = os.path.join(ROOT, "assets", "AVENTUR.DAT")
 
 REC = 16            # bytes por registro
 W = H = 8           # tamano del patron
@@ -212,7 +212,7 @@ class GrafFile:
 
     # -- E/S ---------------------------------------------------------------
     @classmethod
-    def load(cls, path=GRAF_PATH):
+    def load(cls, path=DAT_PATH):
         with open(path, "rb") as f:
             data = f.read()
         n = len(data) // REC
@@ -417,7 +417,7 @@ if __name__ == "__main__":
     # Volcado rapido por linea de ordenes.
     import sys
 
-    g = GrafFile.load(sys.argv[1] if len(sys.argv) > 1 else GRAF_PATH)
+    g = GrafFile.load(sys.argv[1] if len(sys.argv) > 1 else DAT_PATH)
     print("%s: %d registros (%d fondo + %d sprites)"
           % (g.path, len(g), g.n_bg, len(g) - g.n_bg))
     for i in range(len(g)):

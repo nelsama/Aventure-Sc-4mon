@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Genera una hoja de opciones para el hoyo/escalera de 16x16 (4 tiles 8x8).
 
-Lee T_GRASS de assets/GRAF.DAT para dibujar el fondo real del bosque y
+Lee T_GRASS de assets/AVENTUR.DAT para dibujar el fondo real del bosque y
 compone cada opcion como una imagen de 2x2 celdas.
 
 Uso: python tools/mock_hole.py
@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-GRAF = os.path.join(ROOT, "assets", "GRAF.DAT")
+DAT = os.path.join(ROOT, "assets", "AVENTUR.DAT")
 OUT = os.path.join(ROOT, "doc", "hole_options.png")
 
 # Paletas reales del juego (bg_pal en game.c), indices 0-3.
@@ -24,7 +24,7 @@ PAL = {
 
 
 def tile_from_record(rec, pal):
-    """Convierte un registro GRAF.DAT (2 planos de 8 B) en una imagen 8x8."""
+    """Convierte un registro AVENTUR.DAT (2 planos de 8 B) en una imagen 8x8."""
     p0, p1 = rec[:8], rec[8:16]
     im = Image.new("RGB", (8, 8))
     px = im.load()
@@ -157,7 +157,7 @@ OFF = 12              # posicion del hoyo dentro del fondo
 
 
 def load_grass():
-    data = open(GRAF, "rb").read()
+    data = open(DAT, "rb").read()
     return tile_from_record(data[0:16], 0)  # registro 0 = T_GRASS
 
 
@@ -189,7 +189,7 @@ def char_index(ch):
 
 
 def encode_tile(rows, ox, oy):
-    """Codifica un tile 8x8 en el formato de GRAF.DAT: plano0 (8 B) + plano1."""
+    """Codifica un tile 8x8 en el formato de AVENTUR.DAT: plano0 (8 B) + plano1."""
     p0 = [0] * 8
     p1 = [0] * 8
     for y in range(8):
@@ -204,16 +204,16 @@ def encode_tile(rows, ox, oy):
 
 
 def write_graf():
-    """Inserta los tiles del hoyo (C) y de la escalera (B) en assets/GRAF.DAT.
+    """Inserta los tiles del hoyo (C) y de la escalera (B) en assets/AVENTUR.DAT.
 
     Formato: [N_BG tiles][41 sprites]. Se toman los 10 tiles de fondo
     originales y se anaden detras el hoyo (4) y la escalera (4), dejando
     los sprites intactos. Es idempotente: se puede ejecutar varias veces.
     """
-    data = open(GRAF, "rb").read()
+    data = open(DAT, "rb").read()
     n_bg = len(data) // 16 - 41
     if n_bg < 10:
-        raise SystemExit(f"GRAF.DAT inesperado: {len(data)} bytes")
+        raise SystemExit(f"AVENTUR.DAT inesperado: {len(data)} bytes")
 
     base_bg = data[:160]
     spr = data[n_bg * 16:]
@@ -224,8 +224,8 @@ def write_graf():
     assert len(hole) == 64 and len(stairs) == 64
 
     out = base_bg + hole + stairs + spr
-    open(GRAF, "wb").write(out)
-    print(f"{GRAF}: {len(out)} bytes "
+    open(DAT, "wb").write(out)
+    print(f"{DAT}: {len(out)} bytes "
           f"({len(base_bg) // 16} fondo + 4 hoyo + 4 escalera + {len(spr) // 16} sprites)")
 
 
@@ -268,7 +268,7 @@ def main():
 
     footer_y = 84 + panel + 70
     d.text((margin, footer_y),
-           "Coste: 4 patrones de fondo nuevos = 64 B mas en GRAF.DAT y 0 B de RAM.",
+           "Coste: 4 patrones de fondo nuevos = 64 B mas en AVENTUR.DAT y 0 B de RAM.",
            font=f_sub, fill=(160, 220, 170))
     d.text((margin, footer_y + 24),
            "ELEGIDAS: C para el agujero (sala 5) y B para la escalera (Catacumbas).",

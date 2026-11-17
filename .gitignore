@@ -14,4 +14,4 @@ __pycache__/
 
 # Copias de seguridad de los patrones
 *.bak
-assets/GRAF_resp_*.DAT
+assets/AVENTUR_resp_*.DAT

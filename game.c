@@ -85,7 +85,7 @@
 #define T_KFLOOR    0x84
 #define T_WATER     0x85
 #define T_GATE      0x86
-/* Hoyo 16x16 = 2x2 tiles (TL, TR, BL, BR); se cargan desde GRAF.DAT. */
+/* Hoyo 16x16 = 2x2 tiles (TL, TR, BL, BR); se cargan desde AVENTUR.DAT. */
 #define T_HOLE_TL   0x8A
 #define T_HOLE_TR   0x8B
 #define T_HOLE_BL   0x8C
@@ -104,7 +104,7 @@
 /* ===========================================================================
  * PATRONES DE FONDO (2 planos: color = (plano1<<1)|plano0)
  * =========================================================================== */
-/* Patrones cargados desde GRAF.DAT (SD) al arrancar: ya no ocupan RODATA.
+/* Patrones cargados desde AVENTUR.DAT (SD) al arrancar: ya no ocupan RODATA.
  * pat_buf guarda un registro de 16 bytes = plano 0 (8 B) + plano 1 (8 B). */
 static uint8_t pat_buf[16];
 static uint8_t graf_ok;
@@ -282,14 +282,14 @@ static void fill_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h,
 /* ===========================================================================
  * SETUP DE VIDEO
  * =========================================================================== */
-/* Carga los patrones de GRAF.DAT en streaming: 16 bytes por registro.
+/* Carga los patrones de AVENTUR.DAT en streaming: 16 bytes por registro.
  * Formato: NUM_BG_PAT registros de fondo (tiles T_GRASS..) y despues
  * NUM_SPR_PAT registros de sprite (0..NUM_SPR_PAT-1). */
 static void load_patterns(void) {
     uint8_t i, total = (uint8_t)(NUM_BG_PAT + NUM_SPR_PAT);
 
     graf_ok = 0;
-    if (rom_mfs_open("GRAF.DAT") != MFS_OK) return;
+    if (rom_mfs_open("AVENTUR.DAT") != MFS_OK) return;
     if (rom_mfs_get_size() != (uint16_t)(total * 16)) {
         rom_mfs_close();
         return;
@@ -1186,10 +1186,10 @@ int main(void) {
     snd_init();
     setup_video();
 
-    /* Sin GRAF.DAT no hay graficos: avisa y detente. */
+    /* Sin AVENTUR.DAT no hay graficos: avisa y detente. */
     if (!graf_ok) {
         vc_wait_vblank();
-        put_text(9, 13, "FALTA GRAF.DAT", 2);
+        put_text(9, 13, "FALTA AVENTUR.DAT", 2);
         put_text(7, 15, "COPIALO EN LA SD", 1);
         while (1) { }
     }

@@ -4,11 +4,11 @@ Homenaje al clasico **Adventure** de Atari 2600 para el core de video de
 FPGA 6502 (`vc`). Programado en C con **cc65** y pensado para cargarse en el
 monitor desde `$0800`.
 
-> **Dependencia de `GRAF.DAT`:** el binario **no** lleva los graficos dentro: al
-> arrancar carga los patrones de tiles y sprites desde **`GRAF.DAT`** en la SD.
-> El fichero esta incluido en el repositorio (`assets/GRAF.DAT`, 1024 bytes) y
-> hay que copiarlo a la SD junto al binario. Si falta, el juego muestra
-> `FALTA GRAF.DAT / COPIALO EN LA SD` y se detiene.
+> **Dependencia de `AVENTUR.DAT`:** el binario **no** lleva los graficos dentro:
+> al arrancar carga los patrones de tiles y sprites desde **`AVENTUR.DAT`** en la
+> SD. El fichero esta incluido en el repositorio (`assets/AVENTUR.DAT`, 1024
+> bytes) y hay que copiarlo a la SD junto al binario. Si falta, el juego muestra
+> `FALTA AVENTUR.DAT / COPIALO EN LA SD` y se detiene.
 
 ![Pantalla de inicio](doc/pantalla.png)
 
@@ -117,22 +117,22 @@ make CC65_HOME=D:/cc65
 
 Genera:
 
-- `output/aventura.bin` (13961 bytes, se carga en `$0800`)
+- `output/aventura.bin` (13964 bytes, se carga en `$0800`)
 - `output/aventura.map` (mapa de memoria)
 
-`make` **no genera los graficos**: el binario usa `assets/GRAF.DAT` (1024 bytes:
-64 registros de 16 bytes = 22 tiles de fondo + 42 sprites), que ya viene en el
-repositorio y hay que copiar a la SD junto al binario.
+`make` **no genera los graficos**: el binario usa `assets/AVENTUR.DAT` (1024
+bytes: 64 registros de 16 bytes = 22 tiles de fondo + 42 sprites), que ya viene
+en el repositorio y hay que copiar a la SD junto al binario.
 
 ## Cargar en el emulador
 
-La SD debe contener **`AVENTURA.BI`** (el binario) y **`GRAF.DAT`** (los
+La SD debe contener **`AVENTURA.BI`** (el binario) y **`AVENTUR.DAT`** (los
 patrones). Si aun no tienes la imagen de SD del emulador, creala de 16 MB y
 copia los dos ficheros:
 
 ```sh
 python D:/Proyectos/EmuladorFpga6502/tools/sd_tool.py format tarjeta.img 16
-python D:/Proyectos/EmuladorFpga6502/tools/sd_tool.py inject tarjeta.img assets/GRAF.DAT GRAF.DAT
+python D:/Proyectos/EmuladorFpga6502/tools/sd_tool.py inject tarjeta.img assets/AVENTUR.DAT AVENTUR.DAT
 python D:/Proyectos/EmuladorFpga6502/tools/sd_tool.py inject tarjeta.img output/aventura.bin AVENTURA.BI
 ```
 
@@ -143,15 +143,16 @@ LOAD AVENTURA.BI 0800
 R 0800
 ```
 
-> MicroFS limita los nombres a 11 caracteres, por eso el fichero aparece como
-> `AVENTURA.BI` (no `AVENTURA.BIN`).
+> MicroFS limita los nombres a **11 caracteres**, por eso el fichero aparece
+> como `AVENTURA.BI` (no `AVENTURA.BIN`) y los patrones se llaman
+> `AVENTUR.DAT` (no `AVENTURA.DAT`, que son 12 y no caben).
 
-Si falta `GRAF.DAT`, el juego muestra **`FALTA GRAF.DAT / COPIALO EN LA SD`** y
-se detiene: sin patrones no hay graficos.
+Si falta `AVENTUR.DAT`, el juego muestra **`FALTA AVENTUR.DAT / COPIALO EN LA
+SD`** y se detiene: sin patrones no hay graficos.
 
-## Graficos (`GRAF.DAT`)
+## Graficos (`AVENTUR.DAT`)
 
-`assets/GRAF.DAT` es un fichero plano de 1024 bytes dividido en 64 registros de
+`assets/AVENTUR.DAT` es un fichero plano de 1024 bytes dividido en 64 registros de
 16 bytes. Cada registro es un patron 8x8 con **dos planos** (8 B de plano 0 +
 8 B de plano 1, color 0-3):
 
@@ -187,7 +188,7 @@ El juego lo lee al arrancar con `rom_mfs_open` / `rom_mfs_read_via_zp` /
 `vc_load_bg_pattern` / `vc_load_spr_pattern`. Solo usa 16 bytes de buffer en
 RAM, asi que los graficos no ocupan ni RODATA ni RAM.
 
-Si cambias un diseno, vuelve a escribir `GRAF.DAT` y copialo a la SD:
+Si cambias un diseno, vuelve a escribir `AVENTUR.DAT` y copialo a la SD:
 
 ```sh
 python tools/gen_hud.py                    # corazon del HUD (sprite 41)
@@ -202,14 +203,14 @@ Para **extraer** y **anadir** patrones sin tocar el binario a mano hay una
 aplicacion de escritorio (Tkinter, sin instalar nada mas que Pillow):
 
 ```sh
-python tools/graf_editor.py            # abre assets/GRAF.DAT
+python tools/graf_editor.py            # abre assets/AVENTUR.DAT
 python tools/graf_editor.py otro.dat   # o cualquier otro fichero
-python tools/graf_editor.py assets/GRAF.DAT 36   # abre con un registro elegido
+python tools/graf_editor.py assets/AVENTUR.DAT 36   # abre con un registro elegido
 ```
 
 En Windows tambien se puede lanzar con doble clic en `tools/graf_editor.bat`.
 
-![Editor de GRAF.DAT](doc/graf_editor.png)
+![Editor de AVENTUR.DAT](doc/graf_editor.png)
 
 - Miniaturas de los 64 registros (22 de fondo + 42 de sprites) con la **paleta
   real del juego**; se puede forzar otra paleta desde el desplegable.
@@ -251,8 +252,8 @@ En Windows tambien se puede lanzar con doble clic en `tools/graf_editor.bat`.
   como 4 registros (TL, TR, BL, BR) y una de 8x8 como un registro. Los pixeles
   se ajustan al color mas cercano de la paleta.
 - Volcado hexadecimal de los dos planos del registro, copiar, pegar y deshacer.
-- Al guardar deja una copia `GRAF.DAT.bak` y avisa en la barra de estado.
-- **Enviar a la SD y reiniciar**: copia el `GRAF.DAT` a la tarjeta SD del
+- Al guardar deja una copia `AVENTUR.DAT.bak` y avisa en la barra de estado.
+- **Enviar a la SD y reiniciar**: copia el `AVENTUR.DAT` a la tarjeta SD del
   emulador y reinicia la partida (el juego lee los patrones de la SD **solo al
   arrancar**, asi que sin reiniciar no se ve ningun cambio). Ojo: el emulador
   guarda su propia copia del sistema de ficheros de la SD en memoria y puede
@@ -268,7 +269,7 @@ La logica del formato esta separada en `tools/graf_format.py` (no depende de
 Tkinter), por si se quiere usar desde la linea de ordenes:
 
 ```sh
-python tools/graf_format.py assets/GRAF.DAT   # volcado de los 64 registros
+python tools/graf_format.py assets/AVENTUR.DAT   # volcado de los 64 registros
 ```
 
 ## Detalles tecnicos
@@ -300,11 +301,11 @@ python tools/graf_format.py assets/GRAF.DAT   # volcado de los 64 registros
   estando encima, puedes salir de la pared. Al soltarlo cerca de su sitio, se
   repone en la pared en vez de caer al lado.
 - **Los patrones de sprites y tiles ya no viven en el binario**: se cargan al
-  arrancar desde `GRAF.DAT` (SD) con la ROM API (`rom_mfs_open` /
+  arrancar desde `AVENTUR.DAT` (SD) con la ROM API (`rom_mfs_open` /
   `rom_mfs_read_via_zp` / `rom_mfs_close`), en streaming de 16 bytes, y se
   escriben directamente en la VRAM con `vc_load_spr_pattern` /
   `vc_load_bg_pattern`. Solo se usa un buffer de 16 bytes en RAM; el binario
-  queda en **13.961 bytes**.
+  queda en **13.964 bytes**.
 - El **agujero** de la sala 5, la **escalera** de Catacumbas 1 y el **altar**
   del caliz son imagenes de **16x16 formadas por 4 tiles de fondo** cada una
   (no un tile repetido):
@@ -347,10 +348,10 @@ Mapa de memoria final:
 |----------|--------|--------|
 | ZEROPAGE | `$0020`| `$0065`|
 | CODE     | `$0847`| `$3AE6`|
-| RODATA   | `$3AE7`| `$3E88`|
-| BSS      | `$3E89`| `$3F07`|
+| RODATA   | `$3AE7`| `$3E8B`|
+| BSS      | `$3E8C`| `$3F0A`|
 
-Termina en `$3F07`, dejando unos **119 bytes libres** en la zona RAM del
+Termina en `$3F0A`, dejando unos **116 bytes libres** en la zona RAM del
 programa (la pila de cc65 tiene ademas sus 256 bytes en `$3F7F-$3FFF`).
 
 ## Herramienta de pruebas

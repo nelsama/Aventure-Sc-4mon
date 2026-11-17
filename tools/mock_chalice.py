@@ -10,7 +10,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mock_hole import PAL, tile_from_record, font, GRAF  # noqa: E402
+from mock_hole import PAL, tile_from_record, font, DAT  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "doc", "chalice_options.png")
@@ -125,7 +125,7 @@ def sprite_image(rows):
 
 
 def encode_sprite(rows):
-    """Codifica un sprite 8x8 en 2 planos (16 B), formato GRAF.DAT."""
+    """Codifica un sprite 8x8 en 2 planos (16 B), formato AVENTUR.DAT."""
     p0 = [0] * 8
     p1 = [0] * 8
     for y in range(8):
@@ -142,16 +142,16 @@ def encode_sprite(rows):
 
 def write_graf():
     """Reemplaza el patron de sprite 0 (caliz) por la opcion C (con asas)."""
-    data = bytearray(open(GRAF, "rb").read())
+    data = bytearray(open(DAT, "rb").read())
     n_bg = len(data) // 16 - 41
     if n_bg < 22:
-        raise SystemExit("GRAF.DAT sin los tiles de fondo esperados")
+        raise SystemExit("AVENTUR.DAT sin los tiles de fondo esperados")
     off = n_bg * 16          # primer registro de sprite (patron 0)
     rec = encode_sprite(C_HANDLES)
     assert len(rec) == 16
     data[off:off + 16] = rec
-    open(GRAF, "wb").write(data)
-    print(f"{GRAF}: caliz 'con asas' escrito en el patron de sprite 0")
+    open(DAT, "wb").write(data)
+    print(f"{DAT}: caliz 'con asas' escrito en el patron de sprite 0")
 
 
 def make_panel(rows, floor, chosen=False):
@@ -165,7 +165,7 @@ def make_panel(rows, floor, chosen=False):
 
 
 def main():
-    data = open(GRAF, "rb").read()
+    data = open(DAT, "rb").read()
     floor = tile_from_record(data[FLOOR_REC * 16:FLOOR_REC * 16 + 16], FLOOR_PAL)
 
     margin, gap = 24, 20
@@ -215,7 +215,7 @@ def main():
            "ELEGIDA: C (con asas) para el caliz.",
            font=f_sub, fill=(150, 235, 160))
     d.text((margin, footer_y + 24),
-           "Cambiar el caliz no cuesta RAM: es 1 patron de sprite en GRAF.DAT.",
+           "Cambiar el caliz no cuesta RAM: es 1 patron de sprite en AVENTUR.DAT.",
            font=f_sub, fill=(160, 220, 170))
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

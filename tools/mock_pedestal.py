@@ -11,7 +11,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mock_hole import PAL, tile_from_record, font, GRAF, char_index  # noqa: E402
+from mock_hole import PAL, tile_from_record, font, DAT, char_index  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "doc", "pedestal_options.png")
@@ -22,7 +22,7 @@ OFF = 12
 FLOOR_REC = 2
 FLOOR_PAL = 1
 
-# Patron 8x8 del suelo T_CFLOOR tal como sale en GRAF.DAT (2=madera, 0=junta)
+# Patron 8x8 del suelo T_CFLOOR tal como sale en AVENTUR.DAT (2=madera, 0=junta)
 FLOOR = [
     "22222222",
     "22222222",
@@ -157,7 +157,7 @@ def make_panel(rows, floor):
 
 
 def encode_tile(grid, ox, oy):
-    """Codifica un tile 8x8 del grid en formato GRAF.DAT (plano0 + plano1)."""
+    """Codifica un tile 8x8 del grid en formato AVENTUR.DAT (plano0 + plano1)."""
     p0 = [0] * 8
     p1 = [0] * 8
     for y in range(8):
@@ -172,15 +172,15 @@ def encode_tile(grid, ox, oy):
 
 
 def write_graf():
-    """Anade los 4 tiles de la mesa (opcion C) a assets/GRAF.DAT.
+    """Anade los 4 tiles de la mesa (opcion C) a assets/AVENTUR.DAT.
 
     Deja el fichero como [10 fondo base][4 hoyo][4 escalera][4 mesa][41 sprites].
     Es idempotente. Requiere que el hoyo y la escalera ya esten insertados.
     """
-    data = open(GRAF, "rb").read()
+    data = open(DAT, "rb").read()
     n_bg = len(data) // 16 - 41
     if n_bg < 18:
-        raise SystemExit("GRAF.DAT sin hoyo/escalera: ejecuta antes "
+        raise SystemExit("AVENTUR.DAT sin hoyo/escalera: ejecuta antes "
                          "python tools/mock_hole.py --write-graf")
 
     base = data[:160]
@@ -191,12 +191,12 @@ def write_graf():
                      for oy in (0, 8) for ox in (0, 8))
     assert len(altar) == 64
     out = base + hole_stairs + altar + spr
-    open(GRAF, "wb").write(out)
-    print(f"{GRAF}: {len(out)} bytes (mesa insertada en 0x92-0x95)")
+    open(DAT, "wb").write(out)
+    print(f"{DAT}: {len(out)} bytes (mesa insertada en 0x92-0x95)")
 
 
 def main():
-    data = open(GRAF, "rb").read()
+    data = open(DAT, "rb").read()
     floor = tile_from_record(data[FLOOR_REC * 16:FLOOR_REC * 16 + 16], FLOOR_PAL)
 
     margin, gap = 24, 24
@@ -235,7 +235,7 @@ def main():
            "ELEGIDA: C (mesa de patas) para el altar del caliz.",
            font=f_sub, fill=(150, 235, 160))
     d.text((margin, footer_y + 24),
-           "Cada opcion: 4 patrones = 64 B en GRAF.DAT y 0 B de RAM.",
+           "Cada opcion: 4 patrones = 64 B en AVENTUR.DAT y 0 B de RAM.",
            font=f_sub, fill=(160, 220, 170))
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
