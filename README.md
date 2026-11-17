@@ -10,7 +10,9 @@ monitor desde `$0800`.
 > bytes) y hay que copiarlo a la SD junto al binario. Si falta, el juego muestra
 > `FALTA AVENTUR.DAT / COPIALO EN LA SD` y se detiene.
 
-![Pantalla de inicio](doc/pantalla.png)
+![Menu inicial](doc/menu.png)
+
+![En el juego](doc/pantalla.png)
 
 ## Objetivo
 
@@ -22,11 +24,16 @@ vidas.
 
 | Boton       | Accion                                  |
 |-------------|-----------------------------------------|
+| Joystick arriba/abajo | Elegir opcion en el menu       |
+| Fuego       | Confirmar la opcion del menu            |
 | Joystick    | Mover al aventurero                     |
 | Fuego       | Coger / soltar el objeto que este cerca |
-| Fuego (victoria/derrota) | Reintentar                  |
 
-El juego arranca directamente en el Castillo de Oro (sin pantalla de titulo).
+Al arrancar aparece el **menu** con dos opciones: **JUGAR** empieza una partida
+y **SALIR** termina el programa igual que el comando `QB` del monitor (reset con
+autoboot, ver [Cargar en el emulador](#cargar-en-el-emulador)). Cuando pierdes
+las 3 vidas o dejas el caliz en el pedestal vuelves a ese mismo menu, que muestra
+el aviso `GAME OVER` o `VICTORIA!` en la fila 18.
 
 Solo se puede llevar **un objeto a la vez**. Las llaves se consumen solas al
 tocar su puerta correspondiente: las puertas se abren para siempre.
@@ -117,7 +124,7 @@ make CC65_HOME=D:/cc65
 
 Genera:
 
-- `output/aventura.bin` (13964 bytes, se carga en `$0800`)
+- `output/aventura.bin` (14064 bytes, se carga en `$0800`)
 - `output/aventura.map` (mapa de memoria)
 
 `make` **no genera los graficos**: el binario usa `assets/AVENTUR.DAT` (1024
@@ -126,14 +133,16 @@ en el repositorio y hay que copiar a la SD junto al binario.
 
 ## Cargar en el emulador
 
-La SD debe contener **`AVENTURA.BI`** (el binario) y **`AVENTUR.DAT`** (los
-patrones). Si aun no tienes la imagen de SD del emulador, creala de 16 MB y
-copia los dos ficheros:
+La SD debe contener **`AVENTURA.BI`** (el binario), **`AVENTUR.DAT`** (los
+patrones) y, si quieres que funcione la opcion **SALIR** / el autoboot,
+**`BOOT.INI`** con el texto `AVENTURA.BI`. Si aun no tienes la imagen de SD del
+emulador, creala de 16 MB y copia los tres ficheros:
 
 ```sh
 python D:/Proyectos/EmuladorFpga6502/tools/sd_tool.py format tarjeta.img 16
 python D:/Proyectos/EmuladorFpga6502/tools/sd_tool.py inject tarjeta.img assets/AVENTUR.DAT AVENTUR.DAT
 python D:/Proyectos/EmuladorFpga6502/tools/sd_tool.py inject tarjeta.img output/aventura.bin AVENTURA.BI
+python D:/Proyectos/EmuladorFpga6502/tools/sd_tool.py inject tarjeta.img assets/BOOT.INI BOOT.INI
 ```
 
 Con el monitor en marcha y la SD montada:
@@ -146,6 +155,12 @@ R 0800
 > MicroFS limita los nombres a **11 caracteres**, por eso el fichero aparece
 > como `AVENTURA.BI` (no `AVENTURA.BIN`) y los patrones se llaman
 > `AVENTUR.DAT` (no `AVENTURA.DAT`, que son 12 y no caben).
+
+**Salir y autoboot:** `SALIR` escribe `0` en `$C004` y salta a la rutina de
+reset, exactamente lo que hace `QB` en el monitor. Si la SD tiene `BOOT.INI`, el
+firmware vuelve a cargar y ejecutar `AVENTURA.BI` (vuelves al menu); si no lo
+tiene, el reset deja el **prompt del monitor**. MicroFS admite **16 ficheros**:
+si la SD esta llena hay que borrar alguno antes de copiar `BOOT.INI`.
 
 Si falta `AVENTUR.DAT`, el juego muestra **`FALTA AVENTUR.DAT / COPIALO EN LA
 SD`** y se detiene: sin patrones no hay graficos.
@@ -305,7 +320,7 @@ python tools/graf_format.py assets/AVENTUR.DAT   # volcado de los 64 registros
   `rom_mfs_read_via_zp` / `rom_mfs_close`), en streaming de 16 bytes, y se
   escriben directamente en la VRAM con `vc_load_spr_pattern` /
   `vc_load_bg_pattern`. Solo se usa un buffer de 16 bytes en RAM; el binario
-  queda en **13.964 bytes**.
+  queda en **14.064 bytes**.
 - El **agujero** de la sala 5, la **escalera** de Catacumbas 1 y el **altar**
   del caliz son imagenes de **16x16 formadas por 4 tiles de fondo** cada una
   (no un tile repetido):
@@ -319,8 +334,16 @@ python tools/graf_format.py assets/AVENTUR.DAT   # volcado de los 64 registros
   vida en los slots OAM 21-25) y al lado de `LLEVA` aparece el **icono del
   objeto** que llevas (slot 26). Ambos se redibujan cuando cambia el HUD, sin
   tocar la RAM del juego.
-- No hay pantalla de titulo (se recorto para liberar RAM); el juego arranca
-  directamente en el Castillo de Oro.
+- **Menu inicial** en modo texto (`ST_MENU`): `JUGAR` llama a `start_game()` y
+  `SALIR` escribe `0` en `$C004` y hace `JMP ($FFFC)`, el mismo reset con
+  autoboot que `QB`. Solo ocupa un byte de RAM (`menu_sel`). Al ganar o perder,
+  `ST_WIN` / `ST_OVER` vuelven al menu y pintan `VICTORIA!` o `GAME OVER` en la
+  fila 18; el aviso usa la paleta 1 porque el color 3 de la paleta 3 es el
+  `BG_COLOR` global (el texto saldria invisible).
+- **Ojo con la BSS y la ROM API:** `load_patterns()` llama a la ROM API, que usa
+  su **propia pila** (la del monitor, en `$3E00-$3FFF`) y puede dejar basura en
+  la BSS del juego. Por eso `menu_sel` se pone a 0 en `main` **despues** de
+  cargar los patrones; el resto del estado lo inicializa `start_game()`.
 - El HUD usa nombres de sala cortos (B1, C2, ORO...) y pistas de una palabra
   para ahorrar RAM.
 - Los tiles de fondo personalizados viven fuera de `$20-$7F`.
@@ -346,12 +369,12 @@ Mapa de memoria final:
 
 | Segmento | Inicio | Fin    |
 |----------|--------|--------|
-| ZEROPAGE | `$0020`| `$0065`|
-| CODE     | `$0847`| `$3AE6`|
-| RODATA   | `$3AE7`| `$3E8B`|
-| BSS      | `$3E8C`| `$3F0A`|
+| ZEROPAGE | `$0020`| `$0053`|
+| CODE     | `$0847`| `$3B62`|
+| RODATA   | `$3B63`| `$3EEF`|
+| BSS      | `$3EF0`| `$3F6F`|
 
-Termina en `$3F0A`, dejando unos **116 bytes libres** en la zona RAM del
+Termina en `$3F6F`, dejando unos **15 bytes libres** en la zona RAM del
 programa (la pila de cc65 tiene ademas sus 256 bytes en `$3F7F-$3FFF`).
 
 ## Herramienta de pruebas

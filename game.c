@@ -17,7 +17,7 @@
 /* ===========================================================================
  * CONSTANTES DE JUEGO
  * =========================================================================== */
-#define ST_TITLE   0
+#define ST_MENU    0
 #define ST_PLAY    1
 #define ST_WIN     2
 #define ST_OVER    3
@@ -228,6 +228,7 @@ static uint8_t  rnd_state;
 static uint8_t  steal_cd;
 static uint8_t  hud_dirty;
 static uint8_t  gate_open[3];
+static uint8_t  menu_sel;   /* 0 = JUGAR, 1 = SALIR */
 
 static uint8_t  obj_room[NUM_OBJ];
 static uint16_t obj_x[NUM_OBJ];
@@ -244,18 +245,14 @@ static uint8_t  dragon_tiles;  /* clave de los tiles ya escritos del dragon */
 static const uint8_t obj_pat[NUM_OBJ] = { 0,1,2,3,4,7,7,0,0,0,5 };
 static const uint8_t obj_pal[NUM_OBJ] = { 1,1,1,2,1,1,0,2,3,1,0 };
 static const uint8_t obj_slot[NUM_OBJ] = { 5,6,7,8,9,10,11,2,3,4,20 };
-static const int8_t  dir_tab[8][2] = {
-    { 0,-1 }, { 1,-1 }, { 1,0 }, { 1,1 },
-    { 0,1 }, { -1,1 }, { -1,0 }, { -1,-1 }
-};
 
 /* Prototipos */
 static void die(void);
 static void draw_actors(void);
 static void draw_hud(void);
 static void start_game(void);
-static void draw_win(void);
-static void draw_over(void);
+static void draw_menu(const char *msg);
+static void salir(void);
 static void update_game(uint8_t actions, uint8_t fire);
 
 /* ===========================================================================
@@ -741,14 +738,6 @@ static void kill_dragon(uint8_t i) {
 /* ===========================================================================
  * IA DE ACTORES
  * =========================================================================== */
-static void actor_pick_dir(uint8_t i) {
-    uint8_t d;
-    rnd_state = (uint8_t)(rnd_state * 5 + 1);
-    d = (uint8_t)(rnd_state & 7);
-    obj_dx[i] = dir_tab[d][0];
-    obj_dy[i] = dir_tab[d][1];
-}
-
 static void actor_move(uint8_t i, uint8_t speed) {
     uint8_t moved = 0;
     uint16_t nx;
@@ -903,7 +892,7 @@ static void die(void) {
     drop_here();
     if (lives) lives--;
     if (!lives) {
-        draw_over();
+        state = ST_OVER;
         return;
     }
     current_room = 8;
@@ -1139,7 +1128,7 @@ static void check_win(void) {
         carry = OBJ_NONE;
         obj_active[OBJ_CHALICE] = 0;
         snd_win();
-        draw_win();
+        state = ST_WIN;
     }
 }
 
@@ -1158,29 +1147,32 @@ static void update_game(uint8_t actions, uint8_t fire) {
 }
 
 /* ===========================================================================
- * PANTALLAS
+ * MENU Y SALIDA
  * =========================================================================== */
-static void draw_win(void) {
-    clear_text_screen();
-    put_text(15, 8, "VICTORIA!", 1);
-    put_text(7, 12, "CALIZ EN PED.", 0);
-    put_text(8, 18, "PULSA FUEGO", 1);
-    state = ST_WIN;
+static void salir(void) {
+    /* Igual que el comando QB del monitor: reset con autoboot (BOOT.INI) del
+     * FPGA. El flag de $C004 sobrevive al reset; 0 = permitir autoboot. */
+    (*(volatile uint8_t *)0xC004) = 0;
+    __asm__ ("jmp ($FFFC)");
 }
 
-static void draw_over(void) {
+static void draw_menu(const char *msg) {
     clear_text_screen();
-    put_text(15, 9, "GAME OVER", 1);
-    put_text(12, 13, "SIN VIDAS", 2);
-    put_text(8, 18, "PULSA FUEGO", 1);
-    state = ST_OVER;
+    put_text(16, 4, "AVENTURA", 1);
+    put_text(17, 12, "JUGAR", 1);
+    put_text(17, 14, "SALIR", 1);
+    put_text(15, (uint8_t)(12 + menu_sel * 2), ">", 1);
+    put_text(13, 24, "MUEVE + FUEGO", 0);
+    /* Paleta 1 para el aviso: la 3 no vale porque su color 3 es el BG_COLOR
+     * (entrada 15), y el texto saldria del color del fondo. */
+    if (msg) put_text(15, 18, msg, 1);
 }
 
 /* ===========================================================================
  * MAIN
  * =========================================================================== */
 int main(void) {
-    uint8_t actions, fire, prev = 0;
+    uint8_t actions, fire, nav, prev = 0;
 
     joy_init();
     snd_init();
@@ -1194,7 +1186,9 @@ int main(void) {
         while (1) { }
     }
 
-    start_game();
+    menu_sel = 0;
+    draw_menu(0);
+    state = ST_MENU;
 
     while (1) {
         vc_wait_vblank();
@@ -1206,17 +1200,28 @@ int main(void) {
 
         actions = joy_read();
         fire = (uint8_t)((actions & JOY_A_FIRE) && !(prev & JOY_A_FIRE));
-        prev = (uint8_t)(actions & JOY_A_FIRE);
+        nav = (uint8_t)((actions & (JOY_A_UP | JOY_A_DOWN)) &&
+                        !(prev & (JOY_A_UP | JOY_A_DOWN)));
+        prev = actions;
 
         if (state == ST_PLAY) {
             update_game(actions, fire);
+        } else if (state == ST_MENU) {
+            if (nav) {
+                menu_sel ^= 1;
+                draw_menu(0);
+            }
+            if (fire) {
+                if (menu_sel) salir();
+                else start_game();
+            }
         } else {
-            if (fire) start_game();
+            /* VICTORIA o GAME OVER: se vuelve al menu. */
+            draw_menu(state == ST_WIN ? "VICTORIA!" : "GAME OVER");
+            state = ST_MENU;
         }
 
         snd_update();
         vc_wait_vblank_end();
     }
-
-    return 0;
 }
