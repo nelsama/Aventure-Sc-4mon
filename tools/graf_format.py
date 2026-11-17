@@ -52,6 +52,44 @@ def _expandir(nibble):
     return (nibble << 4) | nibble
 
 
+def _pantalla(v):
+    """Convierte un color de 24 bits (0xRRGGBB) al color que se ve en pantalla.
+
+    Es lo que hace VC_RGB888 (que se queda con el nibble alto de cada byte) y
+    luego el core, que pasa de RGB444 a 8 bits con (v<<4)|v.
+    """
+    r4 = (v >> 20) & 0xF
+    g4 = (v >> 12) & 0xF
+    b4 = (v >> 4) & 0xF
+    return (_expandir(r4), _expandir(g4), _expandir(b4))
+
+
+def _paleta(*colores):
+    """Paleta de 4 entradas: la primera es transparente (indice 0)."""
+    return [(0, 0, 0)] + [_pantalla(c) for c in colores]
+
+
+# Paletas reales del juego (bg_pal y spr_pal en game.c).
+# El .dat NO guarda los colores: solo el indice 0-3 de cada pixel. Los RGB
+# estan aqui (y en game.c) y se suben a la RAM de paletas del core de video al
+# arrancar (vc_pal_load_bg / vc_pal_load_spr).
+BG_PAL = {
+    0: _paleta(0x00AA44, 0x005522, 0xFFFFFF),
+    1: _paleta(0xFFCC00, 0x884400, 0xFFFFFF),
+    2: _paleta(0x3366AA, 0x112244, 0xFFFFFF),
+    3: _paleta(0xDDDDDD, 0x777777, 0xFFFFFF),
+}
+
+SPR_PAL = {
+    0: _paleta(0x2E5BFF, 0xFFCC00, 0x101018),
+    1: _paleta(0xFFCC00, 0x995500, 0xFFFFFF),
+    2: _paleta(0xFF0000, 0xFF8800, 0xFFFFFF),
+    3: _paleta(0x00FF00, 0x008800, 0xFFFFFF),
+}
+
+GAME_C = os.path.join(ROOT, "game.c")
+
+
 def _leer_paletas_game():
     """Lee bg_pal y spr_pal de game.c (los colores que se ven de verdad).
 
@@ -78,13 +116,7 @@ def _leer_paletas_game():
             hexes = re.findall(r"0x([0-9A-Fa-f]{6})", fila)
             if len(hexes) < 3:
                 return None
-            cols = [(0, 0, 0)]
-            for h in hexes[:3]:
-                v = int(h, 16)
-                cols.append((_expandir((v >> 16) & 0xF),
-                             _expandir((v >> 8) & 0xF),
-                             _expandir(v & 0xF)))
-            pals[i] = cols
+            pals[i] = _paleta(*[int(h, 16) for h in hexes[:3]])
         return pals
 
     bg = una("bg_pal")

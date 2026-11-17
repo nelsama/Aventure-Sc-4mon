@@ -161,17 +161,26 @@ se detiene: sin patrones no hay graficos.
 - registros 22-63: **42 patrones de sprite** (jugador, dragones, objetos, caliz,
   corazon del HUD...).
 
-**El `.dat` NO guarda los colores RGB**, solo el indice 0-3 de cada pixel (el
+**El `.dat` no guarda los colores RGB**, solo el indice 0-3 de cada pixel (el
 color 0 es transparente). Los colores estan en `game.c` (`bg_pal[4][4]` y
-`spr_pal[4][4]`) y se suben a la RAM de paletas del core de video al arrancar
-(`vc_pal_load_bg` / `vc_pal_load_spr`). Por eso el mismo patron puede verse en
-colores distintos: los tres dragones usan los mismos 8 registros (54-61) y solo
-cambia la paleta con la que se dibujan (`obj_pal`: rojo=2, verde=3, dorado=1).
+`spr_pal[4][4]`, lineas 115-129) y se suben a la RAM de paletas del core de
+video al arrancar (`vc_pal_load_bg` / `vc_pal_load_spr`). Por eso el mismo
+patron puede verse en colores distintos: los tres dragones usan los mismos 8
+registros (54-61) y solo cambia la paleta con la que se dibujan (`obj_pal`:
+rojo=2, verde=3, dorado=1).
 
-Para cambiar un color hay que tocar `game.c` y recompilar, no el `.dat`. El
-editor lee las paletas de `game.c` solo, asi que la vista previa es siempre la
-real, y expande el RGB444 del hardware (`(v<<4)|v`): por ejemplo `0x2E5BFF` se
-ve como `#EEBBFF`.
+Para cambiar un color hay que tocar `game.c` (y recompilar), no el `.dat`. El
+editor lee las paletas de `game.c` automaticamente, asi que la vista previa es
+siempre la real, y tiene en cuenta que el hardware solo guarda 4 bits por canal
+(RGB444) y los expande con `(v << 4) | v`: asi `0x2E5BFF` (azul del caballero)
+se ve como `#2255FF` y `0x00AA44` (hierba) se queda en `#00AA44`.
+
+El caballero (casco azul con visera y penacho dorado) ocupa los 24 registros
+30-53: una imagen de 2x2 por direccion mas dos fotogramas de caminar hacia cada
+lado. Las hojas de referencia de esos fotogramas, exportadas con el propio
+editor, estan en `doc/GRAF_38_16x16.png` (de frente a la derecha),
+`doc/GRAF_38_16x16_left.png` (a la izquierda) y
+`doc/GRAF_38_16x16_rigth_walk.png` (caminando a la derecha).
 
 El juego lo lee al arrancar con `rom_mfs_open` / `rom_mfs_read_via_zp` /
 `rom_mfs_close`, en streaming de 16 bytes, y lo escribe en la VRAM con
@@ -209,6 +218,11 @@ En Windows tambien se puede lanzar con doble clic en `tools/graf_editor.bat`.
   dragon en rojo, corazon en rojo...). Los botones de color y la vista previa
   siguen esa paleta, y el desplegable permite forzar otra para ver como
   quedaria con otros colores.
+- Las paletas **se leen de `game.c` al arrancar** (no estan copiadas dentro del
+  editor) y se convierten igual que el hardware: `VC_RGB888` se queda con el
+  nibble alto de cada canal (RGB444) y el core lo expande con `(v << 4) | v`.
+  Asi la vista previa coincide pixel a pixel con la pantalla: el azul del
+  caballero `0x2E5BFF` se ve `#2255FF`, no `#EEBBFF`.
 - Pintar pixel a pixel el registro elegido: **clic izquierdo** pinta el color
   marcado y **clic derecho** pone el color 0 (transparente). Junto al patrón
   hay botones para **Limpiar** (vaciarlo), **Todo color 1** y **Todo color 2**
