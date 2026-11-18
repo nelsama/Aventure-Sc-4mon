@@ -241,6 +241,9 @@ static uint8_t  dragon_dir[3]; /* 0 = derecha, 1 = izquierda (ultima) */
 static uint8_t  walk_anim;     /* contador de animacion al caminar */
 static uint8_t  player_tiles;  /* clave de los tiles ya escritos del jugador */
 static uint8_t  dragon_tiles;  /* clave de los tiles ya escritos del dragon */
+/* Objeto que el murcielago se ha llevado (OBJ_NONE si no lleva nada). Va al
+ * final de la BSS para no mover las direcciones que usa tools/emu_play.py. */
+static uint8_t  bat_carry;
 
 static const uint8_t obj_pat[NUM_OBJ] = { 0,1,2,3,4,7,7,0,0,0,5 };
 static const uint8_t obj_pal[NUM_OBJ] = { 1,1,1,2,1,1,0,2,3,1,0 };
@@ -687,6 +690,14 @@ static void pick_item(void) {
         if (d < bd) { bd = (uint8_t)d; best = i; }
     }
     if (best != OBJ_NONE) {
+        if (best == bat_carry) {
+            /* Recuperado: el murcielago huye un momento para que no lo
+             * vuelva a robar en el mismo frame. */
+            bat_carry = OBJ_NONE;
+            steal_cd = 60;
+            obj_dx[OBJ_BAT] = (px > obj_x[OBJ_BAT]) ? -1 : 1;
+            obj_dy[OBJ_BAT] = (py > obj_y[OBJ_BAT]) ? -1 : 1;
+        }
         carry = best;
         hud_dirty = 1;
         snd_pick();
@@ -699,7 +710,7 @@ static void handle_fire(void) {
         uint8_t i, best = OBJ_NONE, bd = 255;
         for (i = 0; i < 7; i++) {
             uint16_t dx, dy, d;
-            if (i == OBJ_BRIDGE || i == OBJ_MAGNET) continue;
+            if (i == OBJ_BRIDGE || i == OBJ_MAGNET || i == bat_carry) continue;
             if (!obj_active[i] || obj_room[i] != current_room) continue;
             dx = adist(px, obj_x[i]);
             dy = adist(py, obj_y[i]);
@@ -833,27 +844,38 @@ static void update_bat(void) {
         /* Tras tocar al jugador, se aleja durante un tiempo. */
         actor_move(OBJ_BAT, 1);
         steal_cd--;
-        return;
+    } else {
+        /* Con un objeto robado no persigue: huye para que cueste alcanzarlo. */
+        if (bat_carry == OBJ_NONE) dragon_think(OBJ_BAT);
+        else {
+            obj_dx[OBJ_BAT] = (px > obj_x[OBJ_BAT]) ? -1 : 1;
+            obj_dy[OBJ_BAT] = (py > obj_y[OBJ_BAT]) ? -1 : 1;
+        }
+        actor_move(OBJ_BAT, 1);
+
+        if (!invuln && hit(px, py, obj_x[OBJ_BAT], obj_y[OBJ_BAT])) {
+            if (carry != OBJ_NONE && bat_carry == OBJ_NONE) {
+                bat_carry = carry;      /* se lo lleva volando */
+                obj_active[bat_carry] = 1;
+                carry = OBJ_NONE;
+                hud_dirty = 1;
+            }
+            /* Huye en direccion contraria al jugador. */
+            obj_dx[OBJ_BAT] = (px > obj_x[OBJ_BAT]) ? -1 : 1;
+            obj_dy[OBJ_BAT] = (py > obj_y[OBJ_BAT]) ? -1 : 1;
+            snd_bat();
+            steal_cd = 60;
+        }
     }
 
-    dragon_think(OBJ_BAT);
-    actor_move(OBJ_BAT, 1);
-
-    if (!invuln && hit(px, py, obj_x[OBJ_BAT], obj_y[OBJ_BAT])) {
-        if (carry != OBJ_NONE) {
-            uint8_t it = carry;
-            obj_room[it] = 4;
-            obj_x[it] = obj_x[OBJ_BAT];
-            obj_y[it] = obj_y[OBJ_BAT];
-            obj_active[it] = 1;
-            carry = OBJ_NONE;
-            hud_dirty = 1;
-        }
-        /* Huye en direccion contraria al jugador. */
-        obj_dx[OBJ_BAT] = (px > obj_x[OBJ_BAT]) ? -1 : 1;
-        obj_dy[OBJ_BAT] = (py > obj_y[OBJ_BAT]) ? -1 : 1;
-        snd_bat();
-        steal_cd = 60;
+    /* El objeto robado vuela pegado al murcielago, para poder quitarselo
+     * alcanzandolo y pulsando fuego. */
+    if (bat_carry != OBJ_NONE) {
+        uint8_t it = bat_carry;
+        obj_room[it] = 4;
+        obj_x[it] = (obj_x[OBJ_BAT] > 292) ? (uint16_t)(obj_x[OBJ_BAT] - 12)
+                                           : (uint16_t)(obj_x[OBJ_BAT] + 12);
+        obj_y[it] = obj_y[OBJ_BAT];
     }
 }
 
@@ -866,7 +888,7 @@ static void update_magnet(void) {
     for (i = 0; i < 7; i++) {
         uint16_t cx, cy, dx, dy;
 
-        if (i == OBJ_BRIDGE || i == OBJ_MAGNET) continue;
+        if (i == OBJ_BRIDGE || i == OBJ_MAGNET || i == bat_carry) continue;
         if (!obj_active[i] || obj_room[i] != current_room) continue;
 
         cx = obj_x[i];
@@ -935,6 +957,7 @@ static void reset_objects(void) {
 static void start_game(void) {
     lives = 3;
     carry = OBJ_NONE;
+    bat_carry = OBJ_NONE;
     current_room = 8;
     px = 160;
     py = 160;

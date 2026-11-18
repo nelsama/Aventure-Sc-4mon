@@ -106,9 +106,10 @@ tres golpes que ascienden al subir y descienden al bajar.
 - **Dragones**: rojo (Castillo Negro), verde (Catac. 2), amarillo (Castillo
   Blanco). Ahora **te persiguen** y, si huyes con uno cerca, **te sigue a la
   sala siguiente**. Matan al tocarte si no llevas la espada.
-- **Murcielago**: Bosque 3. Ahora **te persigue**, te **roba el objeto** que
-  lleves y **huye unos instantes** tras tocarte; **no quita vida**. El dragon
-  sigue siendo el enemigo realmente peligroso.
+- **Murcielago**: Bosque 3. Ahora **te persigue** y te **roba el objeto** que
+  lleves. Mientras huye, el objeto **vuela pegado a el**; tienes que alcanzarlo
+  y pulsar **fuego** para quitarselo. **No quita vida**. El dragon sigue siendo
+  el enemigo realmente peligroso.
 
 Los dragones usan el diseño **Poison Drake** del pack, a 16x16, recoloreado en
 rojo/verde/dorado y con **volteo horizontal** según la dirección en que vuelan:
@@ -125,7 +126,7 @@ make CC65_HOME=D:/cc65
 
 Genera:
 
-- `output/aventura.bin` (13712 bytes, se carga en `$0800`)
+- `output/aventura.bin` (13920 bytes, se carga en `$0800`)
 - `output/aventura.map` (mapa de memoria)
 
 `make` **no genera los graficos**: el binario usa `assets/AVENTUR.DAT` (1024
@@ -321,7 +322,7 @@ python tools/graf_format.py assets/AVENTUR.DAT   # volcado de los 64 registros
   `rom_mfs_read_via_zp` / `rom_mfs_close`), en streaming de 16 bytes, y se
   escriben directamente en la VRAM con `vc_load_spr_pattern` /
   `vc_load_bg_pattern`. Solo se usa un buffer de 16 bytes en RAM; el binario
-  queda en **13.712 bytes**.
+  queda en **13.920 bytes**.
 - El **agujero** de la sala 5, la **escalera** de Catacumbas 1 y el **altar**
   del caliz son imagenes de **16x16 formadas por 4 tiles de fondo** cada una
   (no un tile repetido):
@@ -374,11 +375,11 @@ Mapa de memoria final:
 | Segmento | Inicio | Fin    |
 |----------|--------|--------|
 | ZEROPAGE | `$0020`| `$0053`|
-| CODE     | `$0847`| `$3A02`|
-| RODATA   | `$3A03`| `$3D8F`|
-| BSS      | `$3D90`| `$3E0F`|
+| CODE     | `$0847`| `$3AD2`|
+| RODATA   | `$3AD3`| `$3E5F`|
+| BSS      | `$3E60`| `$3EE0`|
 
-Termina en `$3E0F`, dejando unos **367 bytes libres** en la zona RAM del
+Termina en `$3EE0`, dejando unos **158 bytes libres** en la zona RAM del
 programa (la pila de cc65 tiene ademas sus 256 bytes en `$3F7F-$3FFF`).
 
 ## Herramienta de pruebas
