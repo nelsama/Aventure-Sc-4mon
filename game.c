@@ -255,6 +255,12 @@ static void draw_menu(const char *msg);
 static void salir(void);
 static void update_game(uint8_t actions, uint8_t fire);
 
+/* Distancia absoluta entre dos coordenadas. Centralizarla ahorra mucho
+ * codigo: el ternario de 16 bits ocupa ~50 B cada vez que se repite. */
+static uint16_t adist(uint16_t a, uint16_t b) {
+    return (a > b) ? (uint16_t)(a - b) : (uint16_t)(b - a);
+}
+
 /* ===========================================================================
  * UTILIDADES DE DIBUJO
  * =========================================================================== */
@@ -504,10 +510,8 @@ static uint8_t dragon_following(void) {
     uint16_t dx, dy;
     for (i = OBJ_DRAG_R; i <= OBJ_DRAG_Y; i++) {
         if (!obj_active[i] || obj_room[i] != current_room) continue;
-        dx = (px > obj_x[i]) ? (uint16_t)(px - obj_x[i])
-                             : (uint16_t)(obj_x[i] - px);
-        dy = (py > obj_y[i]) ? (uint16_t)(py - obj_y[i])
-                             : (uint16_t)(obj_y[i] - py);
+        dx = adist(px, obj_x[i]);
+        dy = adist(py, obj_y[i]);
         if (dx <= 64 && dy <= 64) return i;
     }
     return OBJ_NONE;
@@ -625,10 +629,7 @@ static void move_player(uint8_t actions) {
  * OBJETOS
  * =========================================================================== */
 static uint8_t hit(uint16_t ax, uint8_t ay, uint16_t bx, uint8_t by) {
-    uint16_t dx, dy;
-    dx = (ax > bx) ? (uint16_t)(ax - bx) : (uint16_t)(bx - ax);
-    dy = (ay > by) ? (uint16_t)(ay - by) : (uint16_t)(by - ay);
-    return (uint8_t)(dx < 6 && dy < 6);
+    return (uint8_t)(adist(ax, bx) < 6 && adist(ay, by) < 6);
 }
 
 /* Suelta el objeto que lleva el jugador en la celda de enfrente. */
@@ -650,10 +651,8 @@ static void drop_carried(void) {
     /* Si sueltas el puente cerca de donde estaba (p.ej. encima de la pared),
      * se repone en su celda en vez de caer al lado. */
     if (it == OBJ_BRIDGE) {
-        uint16_t ddx = (px > obj_x[OBJ_BRIDGE]) ? (uint16_t)(px - obj_x[OBJ_BRIDGE])
-                                                : (uint16_t)(obj_x[OBJ_BRIDGE] - px);
-        uint8_t ddy = (py > obj_y[OBJ_BRIDGE]) ? (uint8_t)(py - obj_y[OBJ_BRIDGE])
-                                               : (uint8_t)(obj_y[OBJ_BRIDGE] - py);
+        uint16_t ddx = adist(px, obj_x[OBJ_BRIDGE]);
+        uint8_t ddy = (uint8_t)adist(py, obj_y[OBJ_BRIDGE]);
         if (ddx <= 4 && ddy <= 4) {
             tx = (uint8_t)(obj_x[OBJ_BRIDGE] >> 3);
             ty = (uint8_t)(obj_y[OBJ_BRIDGE] >> 3);
@@ -681,8 +680,8 @@ static void pick_item(void) {
     for (i = 0; i < 7; i++) {
         uint16_t dx, dy, d;
         if (!obj_active[i] || obj_room[i] != current_room || i == carry) continue;
-        dx = (px > obj_x[i]) ? (uint16_t)(px - obj_x[i]) : (uint16_t)(obj_x[i] - px);
-        dy = (py > obj_y[i]) ? (uint16_t)(py - obj_y[i]) : (uint16_t)(obj_y[i] - py);
+        dx = adist(px, obj_x[i]);
+        dy = adist(py, obj_y[i]);
         if (dx >= 12 || dy >= 12) continue;
         d = (uint16_t)(dx + dy);
         if (d < bd) { bd = (uint8_t)d; best = i; }
@@ -695,20 +694,25 @@ static void pick_item(void) {
 }
 
 static void handle_fire(void) {
-    /* Caso especial: con el iman, cambiar el caliz que hemos atraido. */
-    if (carry == OBJ_MAGNET && obj_active[OBJ_CHALICE] &&
-        obj_room[OBJ_CHALICE] == current_room) {
-        uint16_t dx, dy;
-        dx = (px > obj_x[OBJ_CHALICE]) ? (uint16_t)(px - obj_x[OBJ_CHALICE])
-                                       : (uint16_t)(obj_x[OBJ_CHALICE] - px);
-        dy = (py > obj_y[OBJ_CHALICE]) ? (uint16_t)(py - obj_y[OBJ_CHALICE])
-                                       : (uint16_t)(obj_y[OBJ_CHALICE] - py);
-        if (dx <= 10 && dy <= 10) {
+    /* Caso especial: con el iman, cambiar el objeto atraido mas cercano. */
+    if (carry == OBJ_MAGNET) {
+        uint8_t i, best = OBJ_NONE, bd = 255;
+        for (i = 0; i < 7; i++) {
+            uint16_t dx, dy, d;
+            if (i == OBJ_BRIDGE || i == OBJ_MAGNET) continue;
+            if (!obj_active[i] || obj_room[i] != current_room) continue;
+            dx = adist(px, obj_x[i]);
+            dy = adist(py, obj_y[i]);
+            if (dx > 10 || dy > 10) continue;
+            d = (uint16_t)(dx + dy);
+            if (d < bd) { bd = (uint8_t)d; best = i; }
+        }
+        if (best != OBJ_NONE) {
             obj_room[OBJ_MAGNET] = current_room;
             obj_x[OBJ_MAGNET] = px;
             obj_y[OBJ_MAGNET] = py;
             obj_active[OBJ_MAGNET] = 1;
-            carry = OBJ_CHALICE;
+            carry = best;
             hud_dirty = 1;
             snd_pick();
             return;
@@ -794,10 +798,8 @@ static void update_dragons(void) {
 
         /* gruñido cuando ronda cerca */
         if (!growl_cd) {
-            ddx = (px > obj_x[i]) ? (uint16_t)(px - obj_x[i])
-                                  : (uint16_t)(obj_x[i] - px);
-            ddy = (py > obj_y[i]) ? (uint16_t)(py - obj_y[i])
-                                  : (uint16_t)(obj_y[i] - py);
+            ddx = adist(px, obj_x[i]);
+            ddy = adist(py, obj_y[i]);
             if (ddx <= 48 && ddy <= 48) {
                 snd_growl();
                 growl_cd = 40;
@@ -855,33 +857,39 @@ static void update_bat(void) {
     }
 }
 
-/* El iman arrastra el caliz a traves de los muros. */
+/* El iman arrastra el caliz, la espada y las llaves a traves de los muros. */
 static void update_magnet(void) {
-    uint16_t cx, cy, dx, dy;
+    uint8_t i;
 
     if (carry != OBJ_MAGNET) return;
-    if (!obj_active[OBJ_CHALICE] || obj_room[OBJ_CHALICE] != current_room) return;
 
-    cx = obj_x[OBJ_CHALICE];
-    cy = obj_y[OBJ_CHALICE];
+    for (i = 0; i < 7; i++) {
+        uint16_t cx, cy, dx, dy;
 
-    dx = (cx > px) ? (uint16_t)(cx - px) : (uint16_t)(px - cx);
-    dy = (cy > py) ? (uint16_t)(cy - py) : (uint16_t)(py - cy);
-    if (dx <= 8 && dy <= 8) return;
+        if (i == OBJ_BRIDGE || i == OBJ_MAGNET) continue;
+        if (!obj_active[i] || obj_room[i] != current_room) continue;
 
-    /* 1 px por frame: antes saltaba 8 px cada 8 frames y se veia a tirones. */
-    if (cx < px) cx = (uint16_t)(cx + 1);
-    else if (cx > px) cx = (uint16_t)(cx - 1);
-    if (cy < py) cy = (uint16_t)(cy + 1);
-    else if (cy > py) cy = (uint16_t)(cy - 1);
+        cx = obj_x[i];
+        cy = obj_y[i];
 
-    if (cx < 8) cx = 8;
-    if (cx > 304) cx = 304;
-    if (cy < 32) cy = 32;
-    if (cy > 208) cy = 208;
+        dx = adist(cx, px);
+        dy = adist(cy, py);
+        if (dx <= 8 && dy <= 8) continue;
 
-    obj_x[OBJ_CHALICE] = cx;
-    obj_y[OBJ_CHALICE] = (uint8_t)cy;
+        /* 1 px por frame: antes saltaba 8 px cada 8 frames y se veia a tirones. */
+        if (cx < px) cx = (uint16_t)(cx + 1);
+        else if (cx > px) cx = (uint16_t)(cx - 1);
+        if (cy < py) cy = (uint16_t)(cy + 1);
+        else if (cy > py) cy = (uint16_t)(cy - 1);
+
+        if (cx < 8) cx = 8;
+        if (cx > 304) cx = 304;
+        if (cy < 32) cy = 32;
+        if (cy > 208) cy = 208;
+
+        obj_x[i] = cx;
+        obj_y[i] = (uint8_t)cy;
+    }
 }
 
 /* ===========================================================================

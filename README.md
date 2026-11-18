@@ -53,8 +53,8 @@ tocar su puerta correspondiente: las puertas se abren para siempre.
    dragon amarillo: la espada los mata).
 5. En la sala del **Foso**, coloca el **puente** sobre el agua. La **llave
    negra** abre la puerta norte del **Castillo Negro**.
-6. Con el **iman**, atrae el caliz a traves del muro de la camara sellada.
-   Cuando lo tengas cerca, pulsa fuego para cambiar el iman por el caliz.
+6. Con el **iman**, atrae el caliz, la espada o las llaves a traves de los muros.
+   Cuando el objeto este cerca, pulsa fuego para cambiar el iman por el.
 7. Lleva el **caliz** al pedestal del Castillo de Oro y gana.
 
 ## Mapa de habitaciones
@@ -97,8 +97,9 @@ tres golpes que ascienden al subir y descienden al bajar.
 - **Puente**: Bosque 6. Se coloca sobre agua o sobre la pared de Catac. 3.
   Tiene **dos sprites**: vertical en el Foso (cruce arriba/abajo) y horizontal
   en Catac. 3 (cruce izquierda/derecha).
-- **Iman**: Catac. 2. Herradura roja con polos blancos; atrae el caliz a traves
-  de los muros con movimiento continuo (1 px por frame).
+- **Iman**: Catac. 2. Herradura roja con polos blancos; atrae el **caliz, la
+  espada y las tres llaves** a traves de los muros con movimiento continuo (1 px
+  por frame). Pulsa fuego para cambiar el iman por el objeto atraido mas cercano.
 - **Llave amarilla**: Castillo de Oro. Abre la puerta norte de ese castillo.
 - **Llave blanca**: Catac. 4. Abre la puerta del Castillo Blanco.
 - **Llave negra**: Castillo Blanco. Abre la puerta del Castillo Negro.
@@ -124,7 +125,7 @@ make CC65_HOME=D:/cc65
 
 Genera:
 
-- `output/aventura.bin` (14064 bytes, se carga en `$0800`)
+- `output/aventura.bin` (13712 bytes, se carga en `$0800`)
 - `output/aventura.map` (mapa de memoria)
 
 `make` **no genera los graficos**: el binario usa `assets/AVENTUR.DAT` (1024
@@ -320,7 +321,7 @@ python tools/graf_format.py assets/AVENTUR.DAT   # volcado de los 64 registros
   `rom_mfs_read_via_zp` / `rom_mfs_close`), en streaming de 16 bytes, y se
   escriben directamente en la VRAM con `vc_load_spr_pattern` /
   `vc_load_bg_pattern`. Solo se usa un buffer de 16 bytes en RAM; el binario
-  queda en **14.064 bytes**.
+  queda en **13.712 bytes**.
 - El **agujero** de la sala 5, la **escalera** de Catacumbas 1 y el **altar**
   del caliz son imagenes de **16x16 formadas por 4 tiles de fondo** cada una
   (no un tile repetido):
@@ -358,6 +359,9 @@ python tools/graf_format.py assets/AVENTUR.DAT   # volcado de los 64 registros
   `videocore-6502-cc65` (`video.o`, `gfx_vram.o`, `gfx_tiles.o`, `gfx_text.o`,
   `gfx_pal.o`). Al no usar `vc_sprite_disable` (se apaga el sprite escribiendo
   OAM directamente) se descartan `gfx.o` y `collide.o`, ahorrando ~400 bytes.
+- Las distancias absolutas se calculan con una unica funcion `adist()`. El
+  ternario de 16 bits que habia repetido en cada comprobacion ocupaba ~50 B por
+  uso; centralizarlo libero mas de 300 B y dejo sitio para el iman ampliado.
 
 - Las islas verdes del bosque usan el tile de fondo `0x81` rediseñado como
   **árbol** (copa verde, sombra y tronco). Al ser tile de fondo no consume OAM
@@ -370,11 +374,11 @@ Mapa de memoria final:
 | Segmento | Inicio | Fin    |
 |----------|--------|--------|
 | ZEROPAGE | `$0020`| `$0053`|
-| CODE     | `$0847`| `$3B62`|
-| RODATA   | `$3B63`| `$3EEF`|
-| BSS      | `$3EF0`| `$3F6F`|
+| CODE     | `$0847`| `$3A02`|
+| RODATA   | `$3A03`| `$3D8F`|
+| BSS      | `$3D90`| `$3E0F`|
 
-Termina en `$3F6F`, dejando unos **15 bytes libres** en la zona RAM del
+Termina en `$3E0F`, dejando unos **367 bytes libres** en la zona RAM del
 programa (la pila de cc65 tiene ademas sus 256 bytes en `$3F7F-$3FFF`).
 
 ## Herramienta de pruebas
