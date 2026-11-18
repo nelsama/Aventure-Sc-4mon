@@ -879,11 +879,21 @@ static void update_bat(void) {
     }
 }
 
-/* El iman arrastra el caliz, la espada y las llaves a traves de los muros. */
+/* El iman atrae el caliz, la espada y las llaves a traves de los muros,
+ * tanto si lo lleva el jugador como si esta tirado en el suelo. */
 static void update_magnet(void) {
     uint8_t i;
+    uint16_t mx, my;
 
-    if (carry != OBJ_MAGNET) return;
+    if (carry == OBJ_MAGNET) {          /* en la mano: atrae al jugador */
+        mx = px;
+        my = py;
+    } else if (obj_active[OBJ_MAGNET] && obj_room[OBJ_MAGNET] == current_room) {
+        mx = obj_x[OBJ_MAGNET];         /* en el suelo: atrae hacia el iman */
+        my = obj_y[OBJ_MAGNET];
+    } else {
+        return;
+    }
 
     for (i = 0; i < 7; i++) {
         uint16_t cx, cy, dx, dy;
@@ -894,15 +904,15 @@ static void update_magnet(void) {
         cx = obj_x[i];
         cy = obj_y[i];
 
-        dx = adist(cx, px);
-        dy = adist(cy, py);
+        dx = adist(cx, mx);
+        dy = adist(cy, my);
         if (dx <= 8 && dy <= 8) continue;
 
         /* 1 px por frame: antes saltaba 8 px cada 8 frames y se veia a tirones. */
-        if (cx < px) cx = (uint16_t)(cx + 1);
-        else if (cx > px) cx = (uint16_t)(cx - 1);
-        if (cy < py) cy = (uint16_t)(cy + 1);
-        else if (cy > py) cy = (uint16_t)(cy - 1);
+        if (cx < mx) cx = (uint16_t)(cx + 1);
+        else if (cx > mx) cx = (uint16_t)(cx - 1);
+        if (cy < my) cy = (uint16_t)(cy + 1);
+        else if (cy > my) cy = (uint16_t)(cy - 1);
 
         if (cx < 8) cx = 8;
         if (cx > 304) cx = 304;
