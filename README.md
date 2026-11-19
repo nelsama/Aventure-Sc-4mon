@@ -100,8 +100,10 @@ tres golpes que ascienden al subir y descienden al bajar.
 - **Iman**: Catac. 2. Herradura roja con polos blancos; atrae el **caliz, la
   espada y las tres llaves** a traves de los muros con movimiento continuo (1 px
   por frame). Atrae tanto **en la mano** (los objetos van al jugador) como
-  **tirado en el suelo** (los objetos van hacia el iman). Pulsa fuego para
-  cambiar el iman por el objeto atraido mas cercano.
+  **tirado en el suelo** (los objetos van hacia el iman). Con el iman en la mano
+  los objetos atraidos **cambian de sala contigo**, asi no se quedan tirados al
+  cruzar el rio del Foso, y se reparten a distintas distancias para no taparse
+  entre si. Pulsa fuego para cambiar el iman por el objeto atraido mas cercano.
 - **Llave amarilla**: Castillo de Oro. Abre la puerta norte de ese castillo.
 - **Llave blanca**: Catac. 4. Abre la puerta del Castillo Blanco.
 - **Llave negra**: Castillo Blanco. Abre la puerta del Castillo Negro.
@@ -128,7 +130,7 @@ make CC65_HOME=D:/cc65
 
 Genera:
 
-- `output/aventura.bin` (13980 bytes, se carga en `$0800`)
+- `output/aventura.bin` (14047 bytes, se carga en `$0800`)
 - `output/aventura.map` (mapa de memoria)
 
 `make` **no genera los graficos**: el binario usa `assets/AVENTUR.DAT` (1024
@@ -308,9 +310,10 @@ python tools/graf_format.py assets/AVENTUR.DAT   # volcado de los 64 registros
 - IA de dragones: persiguen al jugador por ambos ejes (deslizan por las paredes)
   y, si huyes con uno a menos de 64 px, te sigue a la sala siguiente. Emiten
   gruñidos cuando estan cerca y un rugido al entrar contigo.
-- Sprites: jugador en los slots OAM 12-15, dragones en 16-19, objetos en
-  1-11 y el murcielago en el 20 (dibujado encima del jugador). Como maximo
-  8 sprites por scanline; hay 32 en OAM.
+- Sprites: jugador en los slots OAM 12-15, dragones en 16-19, objetos en 5, 6 y
+  8-11, el murcielago en el 20 y el puente en el 31. En este core gana el sprite
+  de indice mas bajo, asi que el puente (31) queda detras de todo y no tapa a
+  los objetos ni al jugador. Como maximo 8 sprites por scanline; hay 32 en OAM.
 - Para evitar parpadeos por la carrera con VBLANK, `draw_actors()` se llama
   justo despues de `vc_wait_vblank()` y antes de leer el joystick/actualizar el
   juego. El dragon se dibuja el primero, con `draw16_fast`, y sus slots no se
@@ -324,7 +327,7 @@ python tools/graf_format.py assets/AVENTUR.DAT   # volcado de los 64 registros
   `rom_mfs_read_via_zp` / `rom_mfs_close`), en streaming de 16 bytes, y se
   escriben directamente en la VRAM con `vc_load_spr_pattern` /
   `vc_load_bg_pattern`. Solo se usa un buffer de 16 bytes en RAM; el binario
-  queda en **13.980 bytes**.
+  queda en **14.047 bytes**.
 - El **agujero** de la sala 5, la **escalera** de Catacumbas 1 y el **altar**
   del caliz son imagenes de **16x16 formadas por 4 tiles de fondo** cada una
   (no un tile repetido):
@@ -377,11 +380,11 @@ Mapa de memoria final:
 | Segmento | Inicio | Fin    |
 |----------|--------|--------|
 | ZEROPAGE | `$0020`| `$0053`|
-| CODE     | `$0847`| `$3B0E`|
-| RODATA   | `$3B0F`| `$3E9B`|
-| BSS      | `$3E9C`| `$3F1C`|
+| CODE     | `$0847`| `$3B51`|
+| RODATA   | `$3B52`| `$3EDE`|
+| BSS      | `$3EDF`| `$3F60`|
 
-Termina en `$3F1C`, dejando unos **98 bytes libres** en la zona RAM del
+Termina en `$3F60`, dejando unos **31 bytes libres** en la zona RAM del
 programa (la pila de cc65 tiene ademas sus 256 bytes en `$3F7F-$3FFF`).
 
 ## Herramienta de pruebas
