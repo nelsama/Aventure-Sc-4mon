@@ -244,9 +244,6 @@ static uint8_t  dragon_tiles;  /* clave de los tiles ya escritos del dragon */
 /* Objeto que el murcielago se ha llevado (OBJ_NONE si no lleva nada). Va al
  * final de la BSS para no mover las direcciones que usa tools/emu_play.py. */
 static uint8_t  bat_carry;
-/* Sala de la que viene el jugador cuando lleva el iman: sus objetos atraidos
- * pasan a la sala nueva. 0xFF = nada pendiente. */
-static uint8_t  arrastra;
 
 static const uint8_t obj_pat[NUM_OBJ] = { 0,1,2,3,4,7,7,0,0,0,5 };
 static const uint8_t obj_pal[NUM_OBJ] = { 1,1,1,2,1,1,0,2,3,1,0 };
@@ -530,7 +527,6 @@ static uint8_t dragon_following(void) {
 static void change_room(uint8_t dest, uint8_t dir) {
     uint8_t fol = dragon_following();
 
-    if (carry == OBJ_MAGNET) arrastra = current_room;
     current_room = dest;
     if (dir == 0) px = 304;            /* salir por el oeste */
     else if (dir == 1) px = 8;         /* salir por el este  */
@@ -620,7 +616,6 @@ static void move_player(uint8_t actions) {
         uint8_t pc = (uint8_t)((px + 4) >> 3);
         uint8_t pr = (uint8_t)((py + 4) >> 3);
         if (pc >= 19 && pc <= 20 && pr >= 15 && pr <= 16) {
-            if (carry == OBJ_MAGNET) arrastra = current_room;
             if (current_room == 5) {
                 current_room = 12;       /* el agujero baja a Catacumbas */
                 snd_stairs(0);
@@ -908,12 +903,7 @@ static void update_magnet(void) {
         uint16_t cx, cy, dx, dy;
 
         if (i == OBJ_BRIDGE || i == bat_carry) continue;
-        if (!obj_active[i]) continue;
-        if (obj_room[i] != current_room) {
-            /* Recien cambiada la sala con el iman: el objeto viene detras. */
-            if (obj_room[i] != arrastra) continue;
-            obj_room[i] = current_room;
-        }
+        if (!obj_active[i] || obj_room[i] != current_room) continue;
 
         cx = obj_x[i];
         cy = obj_y[i];
@@ -939,7 +929,6 @@ static void update_magnet(void) {
         obj_x[i] = cx;
         obj_y[i] = (uint8_t)cy;
     }
-    arrastra = OBJ_NONE;
 }
 
 /* ===========================================================================
@@ -948,7 +937,6 @@ static void update_magnet(void) {
 static void die(void) {
     snd_death();
     drop_here();
-    arrastra = OBJ_NONE;
     if (lives) lives--;
     if (!lives) {
         state = ST_OVER;
@@ -987,7 +975,6 @@ static void start_game(void) {
     lives = 3;
     carry = OBJ_NONE;
     bat_carry = OBJ_NONE;
-    arrastra = OBJ_NONE;
     current_room = 8;
     px = 160;
     py = 160;
