@@ -16,8 +16,8 @@ monitor desde `$0800`.
 
 ## Objetivo
 
-Recupera el **caliz** de la camara sellada del **Castillo Negro** y llevalo al
-**pedestal de oro** del **Castillo de Oro** (habitacion inicial). Tienes 3
+Recupera el **caliz** de la camara sellada del **Castillo Negro** y dejalo sobre
+la **mesa de oro** del **Castillo de Oro** (habitacion inicial). Tienes 3
 vidas.
 
 ## Controles
@@ -31,9 +31,10 @@ vidas.
 
 Al arrancar aparece el **menu** con dos opciones: **JUGAR** empieza una partida
 y **SALIR** termina el programa igual que el comando `QB` del monitor (reset con
-autoboot, ver [Cargar en el emulador](#cargar-en-el-emulador)). Cuando pierdes
-las 3 vidas o dejas el caliz en el pedestal vuelves a ese mismo menu, que muestra
-el aviso `GAME OVER` o `VICTORIA!` en la fila 18.
+autoboot, ver [Cargar en el emulador](#cargar-en-el-emulador)). Al dejar el caliz
+sobre la mesa suena una melodia de victoria, el caliz se queda encima de la mesa
+y aparece `VICTORIA!`; pulsa **fuego** para volver al menu. Si pierdes las 3
+vidas vuelves directamente al menu con el aviso `GAME OVER`.
 
 Solo se puede llevar **un objeto a la vez**. Las llaves se consumen solas al
 tocar su puerta correspondiente: las puertas se abren para siempre.
@@ -55,7 +56,7 @@ tocar su puerta correspondiente: las puertas se abren para siempre.
    negra** abre la puerta norte del **Castillo Negro**.
 6. Con el **iman**, atrae el caliz, la espada o las llaves a traves de los muros.
    Cuando el objeto este cerca, pulsa fuego para cambiar el iman por el.
-7. Lleva el **caliz** al pedestal del Castillo de Oro y gana.
+7. Deja el **caliz** sobre la mesa del Castillo de Oro y gana.
 
 ## Mapa de habitaciones
 
@@ -132,7 +133,7 @@ make CC65_HOME=D:/cc65
 
 Genera:
 
-- `output/aventura.bin` (13984 bytes, se carga en `$0800`)
+- `output/aventura.bin` (14029 bytes, se carga en `$0800`)
 - `output/aventura.map` (mapa de memoria)
 
 `make` **no genera los graficos**: el binario usa `assets/AVENTUR.DAT` (1024
@@ -329,7 +330,7 @@ python tools/graf_format.py assets/AVENTUR.DAT   # volcado de los 64 registros
   `rom_mfs_read_via_zp` / `rom_mfs_close`), en streaming de 16 bytes, y se
   escriben directamente en la VRAM con `vc_load_spr_pattern` /
   `vc_load_bg_pattern`. Solo se usa un buffer de 16 bytes en RAM; el binario
-  queda en **13.984 bytes**.
+  queda en **14.029 bytes**.
 - El **agujero** de la sala 5, la **escalera** de Catacumbas 1 y el **altar**
   del caliz son imagenes de **16x16 formadas por 4 tiles de fondo** cada una
   (no un tile repetido):
@@ -345,9 +346,11 @@ python tools/graf_format.py assets/AVENTUR.DAT   # volcado de los 64 registros
   tocar la RAM del juego.
 - **Menu inicial** en modo texto (`ST_MENU`): `JUGAR` llama a `start_game()` y
   `SALIR` escribe `0` en `$C004` y hace `JMP ($FFFC)`, el mismo reset con
-  autoboot que `QB`. Solo ocupa un byte de RAM (`menu_sel`). Al ganar o perder,
-  `ST_WIN` / `ST_OVER` vuelven al menu y pintan `VICTORIA!` o `GAME OVER` en la
-  fila 18; el aviso usa la paleta 1 porque el color 3 de la paleta 3 es el
+  autoboot que `QB`. Solo ocupa un byte de RAM (`menu_sel`). Al perder las 3
+  vidas, `ST_OVER` vuelve al menu y pinta `GAME OVER` en la fila 18. Al dejar el
+  caliz sobre la mesa (`ST_WIN`), el caliz se queda encima, suena la melodia de
+  victoria y se pinta `VICTORIA!` sobre la habitacion; hay que pulsar fuego para
+  volver al menu. El aviso usa la paleta 1 porque el color 3 de la paleta 3 es el
   `BG_COLOR` global (el texto saldria invisible).
 - **Ojo con la BSS y la ROM API:** `load_patterns()` llama a la ROM API, que usa
   su **propia pila** (la del monitor, en `$3E00-$3FFF`) y puede dejar basura en
@@ -360,9 +363,11 @@ python tools/graf_format.py assets/AVENTUR.DAT   # volcado de los 64 registros
 - Colision por software con un unico punto central `(x+4, y+4)` contra la
   rejilla de celdas; asi se puede cruzar el puente de forma fiable.
 - Sonido SID no bloqueante (`sound.c`): recoger/soltar, llave, gruñido, rugido,
-  muerte, victoria y **pasos al subir/bajar las escaleras** (tres golpes de
-  pulso que ascienden al subir y descienden al bajar). El ancho de pulso se
-  fija a ~50% (si es 0, el pulso no suena en el SID).
+  muerte, **melodia de victoria** (seis notas ascendentes) y **pasos al subir/
+  bajar las escaleras** (tres golpes de pulso que ascienden al subir y descienden
+  al bajar). La victoria reutiliza el secuenciador de las escaleras para no
+  ocupar mas RAM. El ancho de pulso se fija a ~50% (si es 0, el pulso no suena
+  en el SID).
 - Para que todo quepa en RAM se enlaza contra la **libreria modular** de
   `videocore-6502-cc65` (`video.o`, `gfx_vram.o`, `gfx_tiles.o`, `gfx_text.o`,
   `gfx_pal.o`). Al no usar `vc_sprite_disable` (se apaga el sprite escribiendo
@@ -382,11 +387,11 @@ Mapa de memoria final:
 | Segmento | Inicio | Fin    |
 |----------|--------|--------|
 | ZEROPAGE | `$0020`| `$0053`|
-| CODE     | `$0847`| `$3B12`|
-| RODATA   | `$3B13`| `$3E9F`|
-| BSS      | `$3EA0`| `$3F20`|
+| CODE     | `$0847`| `$3B39`|
+| RODATA   | `$3B3A`| `$3ECC`|
+| BSS      | `$3ECD`| `$3F4C`|
 
-Termina en `$3F20`, dejando unos **95 bytes libres** en la zona RAM del
+Termina en `$3F4C`, dejando unos **51 bytes libres** en la zona RAM del
 programa (la pila de cc65 tiene ademas sus 256 bytes en `$3F7F-$3FFF`).
 
 ## Herramienta de pruebas

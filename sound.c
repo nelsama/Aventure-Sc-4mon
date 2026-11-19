@@ -24,15 +24,18 @@
 static uint8_t fx0_t;       /* temporizador voz 0 */
 static uint8_t fx1_t;       /* temporizador voz 1 */
 static uint8_t fx2_t;       /* temporizador voz 2 */
-static uint8_t fx1_kind;    /* 1 = muerte, 2 = victoria */
 static uint16_t sweep;
 
 /* Pasos de escalera: tres golpes cortos que suben o bajan. */
 static uint8_t stair_n;     /* pasos que quedan */
-static uint8_t stair_k;     /* indice en stair_freq (0..2) */
+static uint8_t stair_k;     /* indice en note_freq (0..2) */
 static int8_t  stair_d;     /* +1 subir, -1 bajar */
 static uint8_t stair_t;     /* temporizador entre pasos */
-static const uint16_t stair_freq[3] = { 0x0A00, 0x1000, 0x1600 };
+/* Notas: las tres primeras son los pasos de escalera; la victoria usa las
+ * seis en orden ascendente. */
+static const uint16_t note_freq[6] = {
+    0x0A00, 0x1000, 0x1600, 0x1C00, 0x2200, 0x2800
+};
 
 static void voice_freq(uint8_t v, uint16_t f) {
     volatile uint8_t *p = SID + (uint16_t)v * 7;
@@ -119,16 +122,18 @@ void snd_bat(void) {
 
 void snd_death(void) {
     sweep = 0x2400;
-    fx1_kind = 1;
     fx1_t = 45;
     voice_on(1, sweep, WF_SAW, 0x00, 0xA8);
 }
 
 void snd_win(void) {
-    sweep = 0x0800;
-    fx1_kind = 2;
-    fx1_t = 30;
-    voice_on(1, sweep, WF_PULSE, 0x00, 0xA8);
+    /* Reutiliza el secuenciador de las escaleras: seis notas ascendentes. */
+    fx0_t = 0;
+    stair_d = 1;
+    stair_k = 1;
+    stair_n = 5;
+    stair_t = 12;
+    voice_on(0, note_freq[0], WF_PULSE, 0x00, 0xA8);
 }
 
 /* Pasos al subir o bajar las escaleras: tres golpes secos, cada vez mas
@@ -139,7 +144,7 @@ void snd_stairs(uint8_t up) {
     fx0_t = 0;               /* corta cualquier efecto corto anterior */
     stair_d = up ? 1 : -1;
     stair_k = up ? 0 : 2;
-    voice_on(0, stair_freq[stair_k], WF_PULSE, 0x00, 0x64);
+    voice_on(0, note_freq[stair_k], WF_PULSE, 0x00, 0x64);
     stair_k = (uint8_t)(stair_k + stair_d);
     stair_n = 2;             /* quedan dos pasos mas */
     stair_t = 12;            /* ~200 ms entre pasos */
@@ -150,7 +155,7 @@ void snd_update(void) {
     if (stair_n) {
         if (--stair_t == 0) {
             stair_t = 12;    /* ~200 ms entre pasos */
-            voice_on(0, stair_freq[stair_k], WF_PULSE, 0x00, 0x64);
+            voice_on(0, note_freq[stair_k], WF_PULSE, 0x00, 0x64);
             stair_k = (uint8_t)(stair_k + stair_d);
             stair_n--;
             if (!stair_n) fx0_t = 10;  /* cola corta tras el ultimo paso */
@@ -160,25 +165,19 @@ void snd_update(void) {
     /* Voz 0: efectos cortos */
     if (fx0_t) {
         fx0_t--;
-        if (fx0_t == 9 && fx1_kind == 0) {
+        if (fx0_t == 9) {
             /* la llave hace un pequeño intervalo ascendente */
             voice_freq(0, 0x224C);
         }
         if (fx0_t == 0) voice_off(0);
     }
 
-    /* Voz 1: muerte (barrido) o victoria (melodia) */
+    /* Voz 1: muerte (barrido descendente) */
     if (fx1_t) {
         fx1_t--;
-        if (fx1_kind == 1) {
-            if (sweep > 0x0800) sweep -= 0x0070;
-            voice_freq(1, sweep);
-            if (fx1_t == 0) voice_off(1);
-        } else if (fx1_kind == 2) {
-            if (sweep < 0x3000) sweep = (uint16_t)(sweep + 0x0080);
-            voice_freq(1, sweep);
-            if (fx1_t == 0) voice_off(1);
-        }
+        if (sweep > 0x0800) sweep -= 0x0070;
+        voice_freq(1, sweep);
+        if (fx1_t == 0) voice_off(1);
     }
 
     /* Voz 2: ruido */

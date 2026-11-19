@@ -1174,7 +1174,16 @@ static void check_win(void) {
     pr = (uint8_t)((py + 4) >> 3);
     if (pc >= 19 && pc <= 20 && pr >= 8 && pr <= 9) {
         carry = OBJ_NONE;
-        obj_active[OBJ_CHALICE] = 0;
+        /* El caliz se queda encima de la mesa (no desaparece). */
+        obj_room[OBJ_CHALICE] = 8;
+        obj_x[OBJ_CHALICE] = 156;
+        obj_y[OBJ_CHALICE] = 60;
+        obj_active[OBJ_CHALICE] = 1;
+        hud_dirty = 1;
+        draw_hud();
+        draw_actors();
+        put_text(15, 18, "VICTORIA!", 1);
+        put_text(17, 20, "FUEGO", 0);
         snd_win();
         state = ST_WIN;
     }
@@ -1263,9 +1272,15 @@ int main(void) {
                 if (menu_sel) salir();
                 else start_game();
             }
+        } else if (state == ST_WIN) {
+            /* La pantalla de victoria espera a que se pulse fuego. */
+            if (fire) {
+                draw_menu(0);
+                state = ST_MENU;
+            }
         } else {
-            /* VICTORIA o GAME OVER: se vuelve al menu. */
-            draw_menu(state == ST_WIN ? "VICTORIA!" : "GAME OVER");
+            /* GAME OVER: se vuelve al menu. */
+            draw_menu("GAME OVER");
             state = ST_MENU;
         }
 
